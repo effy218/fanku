@@ -1,0 +1,36 @@
+.lv-badge {
+  display: inline-flex;
+  align-items: center;
+  font-weight: 700;
+  font-size: 24rpx;
+  padding: 8rpx 16rpx;
+  border: 4rpx solid var(--ink, #3d2b1f);
+  box-shadow: 4rpx 4rpx 0 var(--ink, #3d2b1f);
+}
+
+.lv-badge.sm {
+  font-size: 18rpx;
+  padding: 4rpx 10rpx;
+  box-shadow: 2rpx 2rpx 0 var(--ink, #3d2b1f);
+  border-width: 3rpx;
+}
+
+.lv-strong {
+  background: var(--lv-strong, #e8a317);
+  color: var(--ink, #3d2b1f);
+}
+
+.lv-rec {
+  background: var(--lv-rec, #7a9b5a);
+  color: #fff;
+}
+
+.lv-normal {
+  background: var(--lv-normal, #9b8b7a);
+  color: #fff;
+}
+
+.lv-avoid {
+  background: var(--lv-avoid, #c25b4e);
+  color: #fff;
+}

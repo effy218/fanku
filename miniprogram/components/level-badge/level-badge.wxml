@@ -1,0 +1,1 @@
+<view class="lv-badge {{cls}} {{size === 'sm' ? 'sm' : ''}}">{{label}}</view>

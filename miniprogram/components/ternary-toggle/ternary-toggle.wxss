@@ -1,0 +1,27 @@
+.toggle-row {
+  display: flex;
+  gap: 14rpx;
+}
+
+.toggle-opt {
+  flex: 1;
+  text-align: center;
+  font-weight: 800;
+  font-size: 24rpx;
+  padding: 16rpx 8rpx;
+  border: 4rpx solid var(--ink, #3d2b1f);
+  background: var(--paper, #fffaf0);
+  color: var(--ink-soft, #6b5440);
+  box-shadow: 4rpx 4rpx 0 var(--ink, #3d2b1f);
+  letter-spacing: 1rpx;
+}
+
+.toggle-opt:active {
+  transform: translate(2rpx, 2rpx);
+  box-shadow: 2rpx 2rpx 0 var(--ink, #3d2b1f);
+}
+
+.toggle-opt.on {
+  background: var(--brand, #c8703e);
+  color: #fff;
+}

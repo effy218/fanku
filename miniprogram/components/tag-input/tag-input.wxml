@@ -1,0 +1,35 @@
+<view class="tag-input">
+  <view class="tag-list">
+    <view
+      wx:for="{{tags}}"
+      wx:key="*this"
+      class="chip chip-on"
+      data-index="{{index}}"
+      bindtap="onRemove"
+    >
+      {{item}}
+      <text wx:if="{{!readonly}}" class="rm"> ×</text>
+    </view>
+  </view>
+  <view wx:if="{{!readonly}}" class="tag-add">
+    <input
+      class="pinput tag-field"
+      value="{{draft}}"
+      placeholder="{{placeholder}}"
+      placeholder-class="pinput-placeholder"
+      confirm-type="done"
+      bindinput="onInput"
+      bindconfirm="onConfirm"
+    />
+    <view class="btn btn-sm" bindtap="onAddTap">＋</view>
+  </view>
+  <view wx:if="{{!readonly && suggestions.length}}" class="suggest-row">
+    <view
+      wx:for="{{suggestions}}"
+      wx:key="*this"
+      class="chip"
+      data-tag="{{item}}"
+      bindtap="onSuggest"
+    >{{item}}</view>
+  </view>
+</view>

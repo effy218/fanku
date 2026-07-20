@@ -1,0 +1,8 @@
+{
+  "usingComponents": {
+    "pile-card": "/components/pile-card/pile-card",
+    "pixel-icon": "/components/pixel-icon/pixel-icon"
+  },
+  "navigationStyle": "custom",
+  "disableScroll": true
+}

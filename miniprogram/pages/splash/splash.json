@@ -1,0 +1,6 @@
+{
+  "usingComponents": {
+    "pixel-icon": "/components/pixel-icon/pixel-icon"
+  },
+  "navigationStyle": "custom"
+}

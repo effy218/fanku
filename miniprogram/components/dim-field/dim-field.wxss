@@ -1,0 +1,49 @@
+.dim-field {
+  margin-bottom: 8rpx;
+}
+
+.input-label {
+  display: block;
+  font-weight: 700;
+  font-size: 26rpx;
+  color: var(--ink, #3d2b1f);
+  margin-bottom: 12rpx;
+}
+
+.pinput {
+  width: 100%;
+  box-sizing: border-box;
+  font-size: 28rpx;
+  border: 4rpx solid var(--ink, #3d2b1f);
+  background: var(--cream-50, #fffbf2);
+  padding: 20rpx 24rpx;
+  color: var(--ink, #3d2b1f);
+}
+
+.dim-val {
+  display: flex;
+  align-items: center;
+}
+
+.info-text {
+  font-size: 28rpx;
+  color: var(--ink, #3d2b1f);
+}
+
+.reeat {
+  display: inline-flex;
+  font-weight: 700;
+  font-size: 22rpx;
+  padding: 4rpx 12rpx;
+  border: 3rpx solid var(--ink, #3d2b1f);
+}
+
+.reeat-yes {
+  background: var(--lv-rec-bg, #e8eedc);
+  color: var(--lv-rec, #7a9b5a);
+}
+
+.reeat-no {
+  background: var(--lv-avoid-bg, #f3ddd9);
+  color: var(--lv-avoid, #c25b4e);
+}

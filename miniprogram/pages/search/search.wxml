@@ -1,0 +1,70 @@
+<view class="page">
+  <view class="search-header" style="padding-top: {{statusPad + 14}}px;">
+    <view class="search-top">
+      <text class="back" bindtap="onBack">‹</text>
+      <view class="search-input-wrap">
+        <pixel-icon name="search" size="{{28}}" />
+        <input
+          class="search-input"
+          value="{{keyword}}"
+          placeholder="搜索店名、菜品、笔记"
+          placeholder-class="pinput-placeholder"
+          focus
+          confirm-type="search"
+          bindinput="onInput"
+          bindconfirm="onConfirm"
+        />
+        <text wx:if="{{keyword}}" class="clear" bindtap="clear">✕</text>
+      </view>
+    </view>
+  </view>
+
+  <scroll-view scroll-y class="search-body" enhanced show-scrollbar="{{false}}">
+    <view wx:if="{{!searched}}" class="search-suggest">
+      <view class="suggest-title">最近搜索</view>
+      <view class="suggest-tags">
+        <view
+          wx:for="{{recent}}"
+          wx:key="*this"
+          class="chip"
+          data-q="{{item}}"
+          bindtap="onChip"
+          hover-class="chip-press"
+        >{{item}}</view>
+      </view>
+      <view wx:if="{{!recent.length}}" class="empty-hint">暂无搜索记录</view>
+    </view>
+
+    <view wx:else class="search-result">
+      <view class="result-count">找到 {{results.length}} 条结果</view>
+
+      <view
+        wx:for="{{results}}"
+        wx:key="id"
+        class="result-card"
+        data-id="{{item.id}}"
+        bindtap="openCard"
+        hover-class="card-press"
+      >
+        <view wx:if="{{item.hasPhoto}}" class="result-photo">
+          <image src="{{item.photo}}" mode="aspectFill" class="rp-img" />
+          <view class="rp-badge">
+            <level-badge level="{{item.level}}" size="sm" short />
+          </view>
+        </view>
+        <view wx:elif="{{index === 0}}" class="result-photo ph">
+          <view class="rp-badge">
+            <level-badge level="{{item.level}}" size="sm" short />
+          </view>
+        </view>
+        <view class="result-body">
+          <rich-text class="result-name" nodes="{{item.nameHtml}}"></rich-text>
+          <rich-text class="result-hint" nodes="{{item.hintHtml}}"></rich-text>
+          <view wx:if="{{item.hasPhoto || index === 0}}" class="result-date mono">{{item.date}}</view>
+        </view>
+      </view>
+
+      <view wx:if="{{!results.length}}" class="empty-hint">没有找到相关饭卡</view>
+    </view>
+  </scroll-view>
+</view>

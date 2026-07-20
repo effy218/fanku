@@ -1,0 +1,7 @@
+{
+  "usingComponents": {
+    "level-badge": "/components/level-badge/level-badge",
+    "pixel-icon": "/components/pixel-icon/pixel-icon"
+  },
+  "navigationStyle": "custom"
+}

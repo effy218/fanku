@@ -1,0 +1,86 @@
+<view class="page">
+  <view class="tpl-header" style="padding-top: {{statusPad + 12}}px;">
+    <view class="detail-back" bindtap="onBack" hover-class="btn-press">‹</view>
+    <text class="tpl-title">维度模板</text>
+    <view class="tpl-spacer"></view>
+  </view>
+
+  <scroll-view scroll-y class="tpl-scroll" enhanced show-scrollbar="{{false}}">
+  <view class="tpl-body">
+    <view class="intro">自定义你关心的评价维度：服务、排队、热量、出片……可随时增删改。主页长按 Logo 也可进入。</view>
+
+    <view wx:for="{{defs}}" wx:key="id" class="def-card frame">
+      <view class="def-main">
+        <view class="def-name pix-sm">{{item.name}}</view>
+        <view class="def-meta">
+          <text class="type-tag">{{typeLabels[item.type]}}</text>
+          <text class="en-tag {{item.enabled ? 'on' : ''}}">{{item.enabled ? '启用' : '停用'}}</text>
+        </view>
+      </view>
+      <view class="def-actions">
+        <text class="act" data-index="{{index}}" bindtap="onMoveUp">↑</text>
+        <text class="act" data-index="{{index}}" bindtap="onMoveDown">↓</text>
+        <text class="act" data-id="{{item.id}}" bindtap="onToggleItem">{{item.enabled ? '停' : '启'}}</text>
+        <text class="act" data-id="{{item.id}}" bindtap="onEdit">改</text>
+        <text class="act danger" data-id="{{item.id}}" bindtap="onDeleteItem">删</text>
+      </view>
+    </view>
+
+    <view class="btn btn-primary add-btn" bindtap="onAdd">＋ 新增维度</view>
+    <view class="bottom-spacer"></view>
+  </view>
+</scroll-view>
+
+<!-- 编辑弹层 -->
+<view wx:if="{{editing}}" class="mask" catchtouchmove="true">
+  <view class="sheet">
+    <view class="sheet-head">
+      <text class="pix-sm">{{draft.name ? '编辑维度' : '新增维度'}}</text>
+      <text class="sheet-close" bindtap="onCloseEditor">✕</text>
+    </view>
+
+    <view class="edit-section">
+      <label class="input-label">名称 <text class="req">*</text></label>
+      <input class="pinput" value="{{draft.name}}" placeholder="如：服务、排队" bindinput="onName" />
+    </view>
+
+    <view class="edit-section">
+      <label class="input-label">类型</label>
+      <picker mode="selector" range="{{typeOptLabels}}" value="{{typeIndex}}" bindchange="onTypeChange">
+        <view class="pinput">{{typeOptLabels[typeIndex]}}</view>
+      </picker>
+    </view>
+
+    <block wx:if="{{draft.type === 'binary'}}">
+      <view class="edit-section">
+        <label class="input-label">选项文案</label>
+        <view class="opt-row">
+          <input class="pinput half" value="{{opt0}}" bindinput="onOpt0" placeholder="是" />
+          <input class="pinput half" value="{{opt1}}" bindinput="onOpt1" placeholder="否" />
+        </view>
+      </view>
+    </block>
+
+    <block wx:if="{{draft.type === 'ternary'}}">
+      <view class="edit-section">
+        <label class="input-label">选项文案</label>
+        <view class="opt-row three">
+          <input class="pinput third" value="{{opt0}}" bindinput="onOpt0" />
+          <input class="pinput third" value="{{opt1}}" bindinput="onOpt1" />
+          <input class="pinput third" value="{{opt2}}" bindinput="onOpt2" />
+        </view>
+      </view>
+    </block>
+
+    <view class="edit-section row-between" bindtap="onToggleEnabled">
+      <text class="input-label" style="margin:0">启用</text>
+      <text class="en-tag {{draft.enabled ? 'on' : ''}}">{{draft.enabled ? '开' : '关'}}</text>
+    </view>
+
+    <view class="sheet-btns">
+      <view class="btn btn-primary" bindtap="onSaveDraft">保存</view>
+      <view class="btn btn-ghost" bindtap="onDeleteDraft">删除</view>
+    </view>
+  </view>
+</view>
+</view>

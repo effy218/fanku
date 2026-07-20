@@ -1,0 +1,149 @@
+.page {
+  min-height: 100vh;
+  background: var(--cream-50);
+}
+
+.phone-scroll {
+  height: 100vh;
+}
+
+.detail-topbar {
+  display: flex;
+  align-items: center;
+  padding: 10px 28rpx 16rpx;
+  background: var(--cream-100);
+  border-bottom: 4rpx solid var(--ink);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  gap: 16rpx;
+}
+
+.detail-back {
+  width: 60rpx;
+  height: 60rpx;
+  background: var(--paper);
+  border: 4rpx solid var(--ink);
+  box-shadow: 4rpx 4rpx 0 var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink);
+  font-size: 40rpx;
+  font-weight: 700;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.btn-press {
+  transform: translate(4rpx, 4rpx);
+  box-shadow: 2rpx 2rpx 0 var(--ink) !important;
+}
+
+.detail-right {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-left: auto;
+}
+
+.detail-edit {
+  font-weight: 800;
+  font-size: 26rpx;
+  color: var(--brand);
+  padding: 8rpx 4rpx;
+}
+
+.detail-body {
+  padding: 32rpx 32rpx 80rpx;
+}
+
+.detail-name {
+  font-weight: 800;
+  font-size: 48rpx;
+  color: var(--ink);
+  line-height: 1.3;
+  letter-spacing: 2rpx;
+  text-align: left;
+}
+
+.detail-info {
+  margin-top: 22rpx;
+}
+
+.date-val {
+  font-size: 22rpx;
+}
+
+.stars-row {
+  display: flex;
+  align-items: center;
+}
+
+.detail-section {
+  margin-top: 36rpx;
+}
+
+.photo-scroll {
+  width: 100%;
+}
+
+.photo-row {
+  display: inline-flex;
+  gap: 16rpx;
+}
+
+.detail-photo {
+  width: 100%;
+  height: 260rpx;
+  border: 4rpx solid var(--ink);
+  box-shadow: 6rpx 6rpx 0 var(--ink);
+  background: var(--cream-200);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.detail-photo.ph {
+  width: 100%;
+}
+
+.photo-row .detail-photo {
+  width: 280rpx;
+  flex-shrink: 0;
+}
+
+.photo-ph {
+  font-family: ui-monospace, 'Courier New', monospace;
+  font-size: 18rpx;
+  color: var(--ink-muted);
+  padding-bottom: 16rpx;
+}
+
+.dish-mark {
+  font-weight: 800;
+  font-size: 22rpx;
+}
+
+.mark-must {
+  color: var(--lv-strong);
+}
+
+.mark-no {
+  color: var(--lv-avoid);
+}
+
+.more-block {
+  margin-top: 8rpx;
+}
+
+.danger-row {
+  margin-top: 48rpx;
+  text-align: center;
+  color: var(--lv-avoid);
+  font-weight: 800;
+  font-size: 26rpx;
+  padding: 24rpx;
+  border: 4rpx dashed var(--lv-avoid);
+}

@@ -1,0 +1,8 @@
+{
+  "usingComponents": {
+    "level-badge": "/components/level-badge/level-badge",
+    "star-rating": "/components/star-rating/star-rating",
+    "dim-field": "/components/dim-field/dim-field"
+  },
+  "navigationStyle": "custom"
+}

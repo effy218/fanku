@@ -1,0 +1,9 @@
+<view class="toggle-row">
+  <view
+    wx:for="{{options}}"
+    wx:key="*this"
+    class="toggle-opt {{value === index || value === item ? 'on' : ''}}"
+    data-index="{{index}}"
+    bindtap="onSelect"
+  >{{item}}</view>
+</view>

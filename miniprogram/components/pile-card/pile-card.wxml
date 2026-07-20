@@ -1,0 +1,15 @@
+<view class="pile-card {{odd ? 'odd' : 'even'}}" bindtap="onTap" hover-class="pile-card-hover" hover-stay-time="120">
+  <view class="pc-photo" style="background:{{photoBg}}">
+    <image wx:if="{{photo}}" class="pc-img" src="{{photo}}" mode="aspectFill" />
+    <view class="pc-lv">
+      <level-badge level="{{level}}" size="sm" short />
+    </view>
+  </view>
+  <view class="pc-body">
+    <view class="pc-name">{{name}}</view>
+    <view class="pc-meta">
+      <text class="pc-date">{{date}}</text>
+      <star-rating value="{{taste}}" readonly size="{{22}}" />
+    </view>
+  </view>
+</view>

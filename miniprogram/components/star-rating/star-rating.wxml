@@ -1,0 +1,15 @@
+<view class="stars" style="--star-size: {{size}}rpx;">
+  <block wx:for="{{stars}}" wx:key="index">
+    <view class="star-wrap">
+      <view class="star-hit left" data-index="{{item.index}}" data-half="1" bindtap="onTapSimple"></view>
+      <view class="star-hit right" data-index="{{item.index}}" data-half="0" bindtap="onTapSimple"></view>
+      <view class="star {{item.fill}}">
+        <text class="star-char">★</text>
+        <view wx:if="{{item.fill === 'half'}}" class="star-half-mask">
+          <text class="star-char on">★</text>
+        </view>
+      </view>
+    </view>
+  </block>
+  <text wx:if="{{showValue}}" class="rate-val {{brandValue ? 'brand' : ''}}">{{displayValue}}</text>
+</view>

@@ -1,0 +1,13 @@
+{
+  "name": "fanku",
+  "version": "1.0.0",
+  "description": "饭库 · 私人美食数据库小程序",
+  "scripts": {},
+  "keywords": [],
+  "author": "",
+  "license": "",
+  "dependencies": {},
+  "devDependencies": {
+    "miniprogram-api-typings": "^2.8.3-1"
+  }
+}

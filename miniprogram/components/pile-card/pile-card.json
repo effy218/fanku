@@ -1,0 +1,7 @@
+{
+  "component": true,
+  "usingComponents": {
+    "level-badge": "/components/level-badge/level-badge",
+    "star-rating": "/components/star-rating/star-rating"
+  }
+}
