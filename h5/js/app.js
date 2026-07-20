@@ -336,7 +336,7 @@
     }
   }
 
-  function pressThen(el, fn, ms = 80) {
+  function pressThen(el, fn, ms = 100) {
     if (!el) {
       fn?.()
       return
@@ -348,10 +348,13 @@
     }, ms)
   }
 
-  /** 全站按下态：避免部分控件还没绑 pressThen 时没有反馈 */
+  /** 全站按下态：手机上 :active 不可靠，用 class + 最短按压时长 */
   function installGlobalPress() {
     if (window.__fankuPressBound) return
     window.__fankuPressBound = true
+    /* iOS 需要页面上存在 touch 监听，:active 才较稳定 */
+    document.addEventListener('touchstart', () => {}, { passive: true })
+
     const sel = [
       'button',
       '.btn',
@@ -379,24 +382,45 @@
       '.ht-logo',
       '.chip-x',
       '.act',
+      '.mark-pick',
     ].join(',')
-    document.addEventListener(
-      'pointerdown',
-      (e) => {
-        const el = e.target.closest(sel)
-        if (!el || el.closest('.pile-card')) return
-        el.classList.add('is-pressing')
-      },
-      true
-    )
-    const clear = () => {
+
+    const clearAt = new WeakMap()
+    const holdMs = 140
+
+    const armPress = (el) => {
+      if (!el || el.closest('.pile-card')) return
+      const old = clearAt.get(el)
+      if (old) clearTimeout(old)
+      el.classList.add('is-pressing')
+    }
+    const releasePress = (el) => {
+      if (!el) return
+      const old = clearAt.get(el)
+      if (old) clearTimeout(old)
+      clearAt.set(
+        el,
+        setTimeout(() => el.classList.remove('is-pressing'), holdMs)
+      )
+    }
+
+    const onDown = (e) => {
+      const el = e.target.closest(sel)
+      if (!el) return
+      armPress(el)
+    }
+    const onUp = () => {
       document.querySelectorAll('.is-pressing').forEach((el) => {
-        if (!el.classList.contains('pile-card')) el.classList.remove('is-pressing')
+        if (!el.classList.contains('pile-card')) releasePress(el)
       })
     }
-    document.addEventListener('pointerup', clear, true)
-    document.addEventListener('pointercancel', clear, true)
-    document.addEventListener('pointerleave', clear, true)
+
+    document.addEventListener('pointerdown', onDown, true)
+    document.addEventListener('touchstart', onDown, { capture: true, passive: true })
+    document.addEventListener('pointerup', onUp, true)
+    document.addEventListener('pointercancel', onUp, true)
+    document.addEventListener('touchend', onUp, true)
+    document.addEventListener('touchcancel', onUp, true)
   }
 
   function highlight(text, q) {

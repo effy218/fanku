@@ -88,7 +88,7 @@ img { max-width: 100%; display: block; }
 }
 .view::-webkit-scrollbar { display: none; }
 
-/* 通用按压位移 · 全站可点控件 */
+/* 通用按压位移 · 全站可点控件（手机靠 .is-pressing，不依赖 :active） */
 .press,
 button,
 .btn,
@@ -123,16 +123,48 @@ button,
 .dim-move,
 .dim-rm,
 .ht-logo {
-  transition: transform 0.08s ease, box-shadow 0.08s ease;
+  transition: transform 0.06s ease, box-shadow 0.06s ease;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
+  cursor: pointer;
 }
-.press:active,
 .press.is-pressing,
-button:active,
 button.is-pressing,
-.btn:active,
 .btn.is-pressing,
+.toggle-opt.is-pressing,
+.chip.is-pressing,
+.level-opt.is-pressing,
+.home-fab.is-pressing,
+.home-search-btn.is-pressing,
+.detail-back.is-pressing,
+.mark-pick.is-pressing,
+.act.is-pressing,
+.more-toggle.is-pressing,
+.photo-cell.is-pressing,
+.eh-close.is-pressing,
+.detail-edit.is-pressing,
+.search-top .back.is-pressing,
+.dish-rm.is-pressing,
+.en-tag.is-pressing,
+.icon-pick-btn.is-pressing,
+.backup-row.is-pressing,
+.dish-add-btn.is-pressing,
+.sheet-close.is-pressing,
+.chip-x.is-pressing,
+.cuisine-chip.is-pressing,
+.result-card.is-pressing,
+.danger-row.is-pressing,
+.field-drag-handle.is-pressing,
+.dim-picker-row.is-pressing,
+.type-pick.is-pressing,
+.icon-pick-cell.is-pressing,
+.icon-auto-row.is-pressing,
+.dim-move.is-pressing,
+.dim-rm.is-pressing,
+.ht-logo.is-pressing,
+.press:active,
+button:active,
+.btn:active,
 .toggle-opt:active,
 .chip:active,
 .level-opt:active,
@@ -164,7 +196,7 @@ button.is-pressing,
 .dim-move:active,
 .dim-rm:active,
 .ht-logo:active {
-  transform: translate(2px, 2px) !important;
+  transform: translate(3px, 3px) !important;
   box-shadow: 0 0 0 var(--ink) !important;
 }
 
