@@ -964,29 +964,110 @@ button:active,
 }
 .dish-line {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
   padding: 7px 0;
   font-size: 13px;
   color: var(--ink);
   border-bottom: 1px dotted var(--cream-300);
 }
 .dish-line:last-child { border: none; }
+.dish-line-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
 .dish-line .dish-name { flex: 1; min-width: 0; text-align: left; }
+.dish-detail-extras {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-left: 2px;
+}
+.dish-detail-extra {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dish-detail-extra .info-label {
+  width: 52px;
+  flex-shrink: 0;
+}
 .dish-edit-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.dish-edit-main {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-bottom: 8px;
 }
-.dish-edit-row .pinput {
+.dish-edit-row .dish-edit-main .pinput {
   flex: 1;
   min-width: 0;
   padding: 8px 10px;
   font-size: 12px;
 }
 .dish-edit-row .stars { flex-shrink: 0; }
+.dish-extras {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 0 2px 2px;
+}
+.dish-extra-field .input-label {
+  margin-bottom: 4px;
+}
+.dish-cols-bar {
+  margin-bottom: 8px;
+}
+.dish-col-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.dish-col-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--pix-cn);
+  font-size: 12px;
+  color: var(--ink);
+  background: var(--cream-100);
+  border: 2px solid var(--ink);
+  box-shadow: 2px 2px 0 var(--ink);
+  padding: 4px 6px 4px 8px;
+}
+.dish-col-chip .chip-x {
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--ink-muted);
+  padding: 0 2px;
+}
+.list-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.list-block .list-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.list-block .dish-edit-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
 .dish-edit-row .stars .star { width: 16px; height: 16px; }
 .dish-rm {
   flex-shrink: 0;
@@ -1172,6 +1253,8 @@ button:active,
   justify-content: center;
   border: 2px solid var(--ink);
   z-index: 0;
+  cursor: pointer;
+  user-select: none;
 }
 .field-swipe-content {
   position: relative;
@@ -1319,6 +1402,28 @@ button:active,
   color: var(--brand);
   padding-right: 4px;
 }
+.dim-picker-del {
+  flex-shrink: 0;
+  align-self: center;
+  width: 28px;
+  height: 28px;
+  border: 2px solid var(--ink);
+  box-shadow: 2px 2px 0 var(--ink);
+  background: var(--cream-100);
+  color: var(--lv-avoid);
+  font-family: var(--pix-cn);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+.dim-picker-del:active {
+  transform: translate(1px, 1px);
+  box-shadow: 0 0 0 var(--ink);
+}
 .dim-picker-confirm {
   width: 100%;
   justify-content: center;
@@ -1378,6 +1483,47 @@ button:active,
 .type-pick:active {
   transform: translate(2px, 2px);
   box-shadow: 0 0 0 var(--ink);
+}
+
+.choice-opt-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.choice-opt-row {
+  display: flex;
+  gap: 6px;
+  align-items: stretch;
+}
+.choice-opt-row .pinput { flex: 1; min-width: 0; }
+.choice-opt-row .choice-opt-del {
+  flex-shrink: 0;
+  min-width: 36px;
+  padding: 6px 8px;
+}
+.choice-opt-row .choice-opt-del:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.dim-num-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dim-num-row .pinput { flex: 1; min-width: 0; }
+.dim-unit {
+  font-family: var(--pix-cn);
+  font-size: 13px;
+  color: var(--ink);
+  flex-shrink: 0;
+}
+.toggle-row.is-choice {
+  flex-wrap: wrap;
+}
+.toggle-row.is-choice .toggle-opt {
+  flex: 1 1 auto;
+  min-width: calc(33% - 6px);
 }
 
 /* 改名确认 */
