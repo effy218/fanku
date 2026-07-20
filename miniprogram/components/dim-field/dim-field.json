@@ -1,8 +1,0 @@
-{
-  "component": true,
-  "usingComponents": {
-    "star-rating": "/components/star-rating/star-rating",
-    "ternary-toggle": "/components/ternary-toggle/ternary-toggle",
-    "binary-toggle": "/components/binary-toggle/binary-toggle"
-  }
-}
