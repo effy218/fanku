@@ -421,6 +421,177 @@
       .replace(/"/g, '&quot;')
   }
 
+  const DIM_TYPE_LABEL = {
+    text: '文字',
+    binary: '二态',
+    ternary: '三态',
+    stars: '星级',
+    choice: '选项',
+    number: '数字',
+    list: '列表',
+  }
+
+  function dimTypeTag(def) {
+    if (!def) return ''
+    if (S.isListBlock(def)) return '列表'
+    if (S.isDishAttach(def)) return `列表列 · 菜品`
+    if (def.attach === 'list') return `列表列`
+    return DIM_TYPE_LABEL[def.type] || def.type
+  }
+
+  function isChoiceType(type) {
+    return type === 'choice' || type === 'ternary'
+  }
+
+  function defaultChoiceOptions(type) {
+    if (type === 'ternary') return ['好', '中', '差']
+    return ['是', '否']
+  }
+
+  /** 维度类型配置区：choice 动态选项 / number 单位 */
+  function renderDimTypeConfigHtml(type, draft = {}) {
+    if (type === 'choice' || type === 'binary' || type === 'ternary') {
+      const opts =
+        Array.isArray(draft.options) && draft.options.length >= 2
+          ? draft.options
+          : defaultChoiceOptions(type === 'choice' ? 'choice' : type)
+      const canRemove = opts.length > 2
+      const rows = opts
+        .map(
+          (o, i) => `<div class="choice-opt-row">
+            <input class="pinput" data-choice-opt value="${escapeHtml(o)}" placeholder="选项${i + 1}">
+            <button type="button" class="btn btn-sm btn-ghost choice-opt-del" data-del-opt="${i}" ${canRemove ? '' : 'disabled'} aria-label="删除选项">×</button>
+          </div>`
+        )
+        .join('')
+      return `<label class="input-label">选项文案</label>
+        <div class="choice-opt-list" id="choiceOptList">${rows}</div>
+        <button type="button" class="btn btn-sm dish-add-btn" id="choiceOptAdd">＋ 添加选项</button>`
+    }
+    if (type === 'number') {
+      return `<label class="input-label">单位</label>
+        <input class="pinput" id="dimUnit" value="${escapeHtml(draft.unit || '')}" placeholder="如：分钟、元（可留空）">`
+    }
+    return ''
+  }
+
+  function readChoiceOptionsFromDom(rootEl) {
+    const vals = [...(rootEl?.querySelectorAll('[data-choice-opt]') || [])].map((el) => el.value.trim() || '选项')
+    while (vals.length < 2) vals.push(vals.length === 0 ? '是' : '否')
+    return vals
+  }
+
+  function bindDimTypeConfig(box, getType, draftRef) {
+    if (!box) return { refresh: () => {}, collect: () => ({}) }
+    const paint = () => {
+      const type = getType()
+      box.innerHTML = renderDimTypeConfigHtml(type, draftRef)
+      const addBtn = box.querySelector('#choiceOptAdd')
+      if (addBtn) {
+        addBtn.onclick = (e) => {
+          e.stopPropagation()
+          draftRef.options = readChoiceOptionsFromDom(box)
+          draftRef.options.push(`选项${draftRef.options.length + 1}`)
+          paint()
+        }
+      }
+      box.querySelectorAll('[data-del-opt]').forEach((btn) => {
+        btn.onclick = (e) => {
+          e.stopPropagation()
+          if (btn.disabled) return
+          draftRef.options = readChoiceOptionsFromDom(box)
+          if (draftRef.options.length <= 2) return
+          draftRef.options.splice(Number(btn.dataset.delOpt), 1)
+          paint()
+        }
+      })
+    }
+    paint()
+    return {
+      refresh: paint,
+      collect: () => {
+        const type = getType()
+        if (type === 'choice' || type === 'binary' || type === 'ternary') {
+          return { options: readChoiceOptionsFromDom(box), unit: undefined }
+        }
+        if (type === 'number') {
+          const u = box.querySelector('#dimUnit')
+          return { options: undefined, unit: (u?.value || '').trim() }
+        }
+        return { options: undefined, unit: undefined }
+      },
+    }
+  }
+
+  /** bind: { kind:'card' } | { kind:'extra', listKey, rowIndex } — extra key = listKey|rowIndex|dimId */
+  function renderDimFieldsHtml(def, value, label, bind = { kind: 'card' }) {
+    const lab = escapeHtml(label)
+    const extraKey =
+      bind.kind === 'extra' ? `${bind.listKey}|${bind.rowIndex}|${def.id}` : ''
+    if (def.type === 'text') {
+      const attr = bind.kind === 'extra' ? `data-x-text="${extraKey}"` : `data-dim="${def.id}"`
+      return `<label class="input-label">${lab}</label>
+        <input class="pinput" ${attr} value="${escapeHtml(value ?? '')}" placeholder="填写${lab}…">`
+    }
+    if (def.type === 'number') {
+      const unit = (def.unit || '').trim()
+      const attr = bind.kind === 'extra' ? `data-x-num="${extraKey}"` : `data-dim-num="${def.id}"`
+      const shown = value !== null && value !== undefined && value !== '' ? escapeHtml(String(value)) : ''
+      return `<label class="input-label">${lab}</label>
+        <div class="dim-num-row">
+          <input class="pinput" ${attr} type="number" inputmode="decimal" value="${shown}" placeholder="0">
+          ${unit ? `<span class="dim-unit">${escapeHtml(unit)}</span>` : ''}
+        </div>`
+    }
+    if (def.type === 'stars') {
+      const attr = bind.kind === 'extra' ? `data-x-stars="${extraKey}"` : `data-dim-stars="${def.id}"`
+      return `<label class="input-label">${lab}</label>
+        <div ${attr}>${starsHtml(value || 0, { showValue: true, brand: true })}</div>`
+    }
+    if (def.type === 'binary') {
+      const opts = def.options || ['是', '否']
+      const on0 = value === true || value === 1
+      const attr = bind.kind === 'extra' ? `data-x-bin="${extraKey}"` : `data-dim-bin="${def.id}"`
+      return `<label class="input-label">${lab}</label>
+        <div class="toggle-row" ${attr}>
+          <div class="toggle-opt ${on0 ? 'on' : ''}" data-v="1">${escapeHtml(opts[0])}</div>
+          <div class="toggle-opt ${!on0 && value !== null && value !== undefined ? 'on' : ''}" data-v="0">${escapeHtml(opts[1])}</div>
+        </div>`
+    }
+    if (isChoiceType(def.type)) {
+      const opts = def.options || defaultChoiceOptions(def.type)
+      const idx = typeof value === 'number' ? value : -1
+      const attr = bind.kind === 'extra' ? `data-x-choice="${extraKey}"` : `data-dim-choice="${def.id}"`
+      return `<label class="input-label">${lab}</label>
+        <div class="toggle-row is-choice" ${attr}>
+          ${opts.map((o, i) => `<div class="toggle-opt ${idx === i ? 'on' : ''}" data-v="${i}">${escapeHtml(o)}</div>`).join('')}
+        </div>`
+    }
+    return ''
+  }
+
+  function parseExtraKey(raw) {
+    const parts = String(raw || '').split('|')
+    if (parts.length >= 3) {
+      return { listKey: parts[0], rowIndex: Number(parts[1]), dimId: parts.slice(2).join('|') }
+    }
+    // legacy dishIndex|dimId
+    return { listKey: 'dishes', rowIndex: Number(parts[0]), dimId: parts[1] }
+  }
+
+  function setListRowExtra(card, listKey, rowIndex, dimId, val) {
+    if (listKey === 'dishes') {
+      if (!card.dishes?.[rowIndex]) return
+      const dish = card.dishes[rowIndex]
+      dish.extras = { ...(dish.extras || {}), [dimId]: val }
+      return
+    }
+    const block = card.listData?.[listKey]
+    if (!block?.rows?.[rowIndex]) return
+    const row = block.rows[rowIndex]
+    row.extras = { ...(row.extras || {}), [dimId]: val }
+  }
+
   function editSnapshot(c) {
     return JSON.stringify({
       name: c.name || '',
@@ -437,6 +608,8 @@
       dimOrder: c.dimOrder || [],
       dimAliases: c.dimAliases || {},
       fieldOrder: c.fieldOrder || [],
+      dishColOrder: c.dishColOrder || [],
+      listData: c.listData || {},
       pixelIcon: c.pixelIcon || '',
     })
   }
@@ -445,6 +618,10 @@
     return JSON.stringify({
       fieldOrder: c.fieldOrder || [],
       dimOrder: c.dimOrder || [],
+      dishColOrder: c.dishColOrder || [],
+      listData: Object.fromEntries(
+        Object.entries(c.listData || {}).map(([id, block]) => [id, { colOrder: block?.colOrder || [] }])
+      ),
     })
   }
 
@@ -869,10 +1046,10 @@
         <div class="toggle-opt ${!on0 ? 'on' : ''}">${escapeHtml(opts[1])}</div>
       </div>`
     }
-    if (def.type === 'ternary') {
-      const opts = def.options || ['好', '中', '差']
+    if (isChoiceType(def.type)) {
+      const opts = def.options || defaultChoiceOptions(def.type)
       const idx = Number(value)
-      return `<div class="toggle-row is-readonly" aria-readonly="true">
+      return `<div class="toggle-row is-readonly is-choice" aria-readonly="true">
         ${opts
           .map((o, i) => `<div class="toggle-opt ${idx === i ? 'on' : ''}">${escapeHtml(o)}</div>`)
           .join('')}
@@ -893,7 +1070,7 @@
       : S.getDefs().map((d) => d.id)
     const defs = orderedIds
       .map((id) => defMap[id])
-      .filter((d) => d && d.enabled && S.hasVal(card.dims?.[d.id]))
+      .filter((d) => d && d.enabled && S.isCardAttach(d) && S.hasVal(card.dims?.[d.id]))
     const cuisineHtml = (card.cuisines || []).length
       ? `<div class="info-row"><span class="info-label">菜系</span><span class="info-val cuisine-chips">${(card.cuisines || [])
           .map(
@@ -907,17 +1084,60 @@
       ? `<div class="photo-row">${card.photos.map((p) => `<div class="detail-photo"><img src="${p}" alt=""></div>`).join('')}</div>`
       : `<div class="detail-photo is-dotown is-pickable lv-cover-${escapeHtml(card.level || 'normal')}" id="iconCover" title="点击更换图标">${dotownImg(card, 'dotown-hero')}<span class="photo-ph">暂无实拍 · 点图标可更换</span></div>`
 
+    const dishCols = S.getDishColDefs(card)
     const dishes = (card.dishes || []).filter((d) => (d.name || '').trim()).length
       ? `<div class="detail-section"><div class="ds-title">菜品</div>${card.dishes
           .filter((d) => (d.name || '').trim())
-          .map(
-            (d) => `<div class="dish-line">
-              <span class="dish-name">${escapeHtml(d.name)}</span>
-              ${starsHtml(dishRating(d), { size: 13, readonly: true })}
+          .map((d) => {
+            const extras = dishCols
+              .filter((col) => S.hasVal(d.extras?.[col.id]))
+              .map(
+                (col) => `<div class="dish-detail-extra">
+                  <span class="info-label">${escapeHtml(S.dimLabel(card, col))}</span>
+                  <div class="dim-read-val">${detailDimValueHtml(col, d.extras[col.id])}</div>
+                </div>`
+              )
+              .join('')
+            return `<div class="dish-line">
+              <div class="dish-line-main">
+                <span class="dish-name">${escapeHtml(d.name)}</span>
+                ${starsHtml(dishRating(d), { size: 13, readonly: true })}
+              </div>
+              ${extras ? `<div class="dish-detail-extras">${extras}</div>` : ''}
             </div>`
-          )
+          })
           .join('')}</div>`
       : ''
+
+    const listSections = (card.fieldOrder || [])
+      .map((id) => {
+        const d = defMap[id]
+        if (!d || !S.isListBlock(d)) return ''
+        const block = card.listData?.[id]
+        const cols = S.getListColDefs(card, id)
+        const rows = (block?.rows || []).filter((r) => (r.name || '').trim())
+        if (!rows.length) return ''
+        return `<div class="detail-section"><div class="ds-title">${escapeHtml(S.dimLabel(card, d))}</div>${rows
+          .map((r) => {
+            const extras = cols
+              .filter((col) => S.hasVal(r.extras?.[col.id]))
+              .map(
+                (col) => `<div class="dish-detail-extra">
+                  <span class="info-label">${escapeHtml(S.dimLabel(card, col))}</span>
+                  <div class="dim-read-val">${detailDimValueHtml(col, r.extras[col.id])}</div>
+                </div>`
+              )
+              .join('')
+            return `<div class="dish-line">
+              <div class="dish-line-main">
+                <span class="dish-name">${escapeHtml(r.name)}</span>
+              </div>
+              ${extras ? `<div class="dish-detail-extras">${extras}</div>` : ''}
+            </div>`
+          })
+          .join('')}</div>`
+      })
+      .join('')
 
     const dimsHtml = defs.length
       ? `<div class="detail-section">
@@ -955,6 +1175,7 @@
           <div class="detail-section"><div class="ds-title">照片</div>${photos}</div>
           ${card.note ? `<div class="detail-section"><div class="ds-title">手账</div><div class="note-box">${escapeHtml(card.note)}</div></div>` : ''}
           ${dishes}
+          ${listSections}
           ${dimsHtml}
           <div class="danger-row" id="del">删除饭卡</div>
         </div>
@@ -1009,11 +1230,18 @@
         <div class="toggle-opt">${escapeHtml(opts[1])}</div>
       </div>`
     }
-    if (def.type === 'ternary') {
-      const opts = def.options || ['好', '中', '差']
-      return `<div class="dim-preview-ctrl toggle-row preview-off">
+    if (isChoiceType(def.type)) {
+      const opts = def.options || defaultChoiceOptions(def.type)
+      return `<div class="dim-preview-ctrl toggle-row is-choice preview-off">
         ${opts.map((o, i) => `<div class="toggle-opt ${i === 0 ? 'on' : ''}">${escapeHtml(o)}</div>`).join('')}
       </div>`
+    }
+    if (def.type === 'number') {
+      const unit = (def.unit || '').trim()
+      return `<div class="dim-preview-ctrl"><div class="pinput dim-preview-input">0${unit ? ` ${escapeHtml(unit)}` : ''}</div></div>`
+    }
+    if (S.isListBlock(def)) {
+      return `<div class="dim-preview-ctrl"><div class="pinput dim-preview-input">列表…</div></div>`
     }
     return `<div class="dim-preview-ctrl"><div class="pinput dim-preview-input">${escapeHtml(value || '填写…')}</div></div>`
   }
@@ -1057,18 +1285,47 @@
     const photoAdd = (c.photos || []).length < 9 ? `<div class="photo-cell" data-add-photo>＋</div>` : ''
 
     if (!Array.isArray(c.dishes) || c.dishes.length === 0) {
-      c.dishes = [{ name: '', rating: 5 }]
+      c.dishes = [{ name: '', rating: 5, extras: {} }]
     }
+    const dishCols = S.getDishColDefs(c)
     const dishes = c.dishes
-      .map(
-        (d, i) =>
-          `<div class="dish-edit-row" data-dish-row="${i}">
-            <input class="pinput" data-dish-name="${i}" value="${escapeHtml(d.name || '')}" placeholder="菜名…">
-            <span data-dish-stars="${i}">${starsHtml(dishRating(d), { size: 16 })}</span>
-            <span class="dish-rm" data-rm-dish="${i}">✕</span>
+      .map((d, i) => {
+        const extrasHtml = dishCols
+          .map((col) => {
+            const label = S.dimLabel(c, col)
+            return `<div class="dish-extra-field">${renderDimFieldsHtml(col, d.extras?.[col.id], label, {
+              kind: 'extra',
+              listKey: 'dishes',
+              rowIndex: i,
+            })}</div>`
+          })
+          .join('')
+        return `<div class="dish-edit-row" data-dish-row="${i}">
+            <div class="dish-edit-main">
+              <input class="pinput" data-dish-name="${i}" value="${escapeHtml(d.name || '')}" placeholder="菜名…">
+              <span data-dish-stars="${i}">${starsHtml(dishRating(d), { size: 16 })}</span>
+              <span class="dish-rm" data-rm-dish="${i}">✕</span>
+            </div>
+            ${extrasHtml ? `<div class="dish-extras">${extrasHtml}</div>` : ''}
           </div>`
-      )
+      })
       .join('')
+
+    const dishColsBar = arrange
+      ? `<div class="dish-cols-bar">
+          ${
+            dishCols.length
+              ? `<div class="dish-col-chips">${dishCols
+                  .map(
+                    (col) =>
+                      `<span class="dish-col-chip">${escapeHtml(S.dimLabel(c, col))}<button type="button" class="chip-x" data-rm-dish-col="${col.id}" aria-label="删除列">×</button></span>`
+                  )
+                  .join('')}</div>`
+              : ''
+          }
+          <button type="button" class="btn btn-sm dish-add-btn" id="dishColAdd">＋ 添加列</button>
+        </div>`
+      : ''
 
     const wrapField = (id, inner) => {
       const locked = S.isLockedField(id)
@@ -1084,31 +1341,53 @@
       </div>`
     }
 
-    const renderDimInner = (d) => {
-      const v = c.dims?.[d.id]
-      const label = S.dimLabel(c, d)
-      if (d.type === 'text') {
-        return `<label class="input-label">${escapeHtml(label)}</label>
-          <input class="pinput" data-dim="${d.id}" value="${escapeHtml(v ?? '')}" placeholder="填写${escapeHtml(label)}…">`
-      }
-      if (d.type === 'stars') {
-        return `<label class="input-label">${escapeHtml(label)}</label>
-          <div data-dim-stars="${d.id}">${starsHtml(v || 0, { showValue: true, brand: true })}</div>`
-      }
-      if (d.type === 'binary') {
-        const opts = d.options || ['是', '否']
-        const on0 = v === true || v === 1
-        return `<label class="input-label">${escapeHtml(label)}</label>
-          <div class="toggle-row" data-dim-bin="${d.id}">
-            <div class="toggle-opt ${on0 ? 'on' : ''}" data-v="1">${escapeHtml(opts[0])}</div>
-            <div class="toggle-opt ${!on0 && v !== null && v !== undefined ? 'on' : ''}" data-v="0">${escapeHtml(opts[1])}</div>
+    const renderDimInner = (d) => renderDimFieldsHtml(d, c.dims?.[d.id], S.dimLabel(c, d), { kind: 'card' })
+
+    const renderListBlockInner = (listDef) => {
+      const listId = listDef.id
+      const block = S.ensureListBlock(c, listId)
+      const cols = S.getListColDefs(c, listId)
+      const colsBar = arrange
+        ? `<div class="dish-cols-bar">
+            ${
+              cols.length
+                ? `<div class="dish-col-chips">${cols
+                    .map(
+                      (col) =>
+                        `<span class="dish-col-chip">${escapeHtml(S.dimLabel(c, col))}<button type="button" class="chip-x" data-rm-list-col="${listId}|${col.id}" aria-label="删除列">×</button></span>`
+                    )
+                    .join('')}</div>`
+                : ''
+            }
+            <button type="button" class="btn btn-sm dish-add-btn" data-list-col-add="${listId}">＋ 添加列</button>
           </div>`
-      }
-      const opts = d.options || ['好', '中', '差']
-      const idx = typeof v === 'number' ? v : -1
-      return `<label class="input-label">${escapeHtml(label)}</label>
-        <div class="toggle-row" data-dim-ter="${d.id}">
-          ${opts.map((o, i) => `<div class="toggle-opt ${idx === i ? 'on' : ''}" data-v="${i}">${escapeHtml(o)}</div>`).join('')}
+        : ''
+      const rows = (block.rows || [])
+        .map((r, i) => {
+          const extrasHtml = cols
+            .map((col) => {
+              const label = S.dimLabel(c, col)
+              return `<div class="dish-extra-field">${renderDimFieldsHtml(col, r.extras?.[col.id], label, {
+                kind: 'extra',
+                listKey: listId,
+                rowIndex: i,
+              })}</div>`
+            })
+            .join('')
+          return `<div class="dish-edit-row" data-list-row="${listId}|${i}">
+            <div class="dish-edit-main">
+              <input class="pinput" data-list-name="${listId}|${i}" value="${escapeHtml(r.name || '')}" placeholder="名称…">
+              <span class="dish-rm" data-rm-list-row="${listId}|${i}">✕</span>
+            </div>
+            ${extrasHtml ? `<div class="dish-extras">${extrasHtml}</div>` : ''}
+          </div>`
+        })
+        .join('')
+      return `<div class="list-block" data-list-block="${listId}">
+          <label class="input-label">${escapeHtml(S.dimLabel(c, listDef))}</label>
+          ${colsBar}
+          <div class="list-rows" data-list-rows="${listId}">${rows}</div>
+          <button type="button" class="btn btn-sm dish-add-btn" data-list-row-add="${listId}">＋ 添加一行</button>
         </div>`
     }
 
@@ -1171,6 +1450,7 @@
       }
       if (id === 'dishes') {
         return `<label class="input-label">菜品</label>
+          ${dishColsBar}
           <div id="dishList">${dishes}</div>
           <button type="button" class="btn btn-sm dish-add-btn" id="dishAdd">＋ 添加菜品</button>`
       }
@@ -1185,6 +1465,8 @@
         }
         const d = defMap[id]
         if (!d) return ''
+        if (S.isListBlock(d)) return wrapField(id, renderListBlockInner(d))
+        if (!S.isCardAttach(d)) return ''
         return wrapField(id, renderDimInner(d))
       })
       .join('')
@@ -1200,7 +1482,7 @@
         </div>
         <div class="edit-body" id="editBody">
           <div id="fieldsList">${fieldsHtml}</div>
-          ${arrange ? `<button type="button" class="btn btn-sm dish-add-btn" id="addDimBtn">＋ 添加维度</button>` : ''}
+          ${arrange ? `<button type="button" class="btn btn-sm dish-add-btn" id="addDimBtn">＋ 添加组件</button>` : ''}
         </div>
       </div>
       <div class="sheet-mask" id="dimSheet" style="display:none"></div>`
@@ -1218,8 +1500,36 @@
         const i = Number(el.dataset.dishName)
         if (c.dishes[i]) c.dishes[i].name = el.value
       })
+      root().querySelectorAll('[data-list-name]').forEach((el) => {
+        const [listId, idx] = String(el.dataset.listName).split('|')
+        const row = c.listData?.[listId]?.rows?.[Number(idx)]
+        if (row) row.name = el.value
+      })
       root().querySelectorAll('[data-dim]').forEach((el) => {
         c.dims = { ...c.dims, [el.dataset.dim]: el.value }
+      })
+      root().querySelectorAll('[data-dim-num]').forEach((el) => {
+        const raw = el.value
+        if (raw === '') {
+          c.dims = { ...c.dims, [el.dataset.dimNum]: null }
+          return
+        }
+        const n = Number(raw)
+        c.dims = { ...c.dims, [el.dataset.dimNum]: Number.isFinite(n) ? n : null }
+      })
+      root().querySelectorAll('[data-x-text]').forEach((el) => {
+        const { listKey, rowIndex, dimId } = parseExtraKey(el.dataset.xText)
+        setListRowExtra(c, listKey, rowIndex, dimId, el.value)
+      })
+      root().querySelectorAll('[data-x-num]').forEach((el) => {
+        const { listKey, rowIndex, dimId } = parseExtraKey(el.dataset.xNum)
+        const raw = el.value
+        if (raw === '') {
+          setListRowExtra(c, listKey, rowIndex, dimId, null)
+          return
+        }
+        const n = Number(raw)
+        setListRowExtra(c, listKey, rowIndex, dimId, Number.isFinite(n) ? n : null)
       })
     }
 
@@ -1277,8 +1587,22 @@
             c.date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
           }
           c.dishes = (c.dishes || [])
-            .map((d) => ({ name: (d.name || '').trim(), rating: dishRating(d) }))
+            .map((d) => ({
+              name: (d.name || '').trim(),
+              rating: dishRating(d),
+              extras: d.extras && typeof d.extras === 'object' ? d.extras : {},
+            }))
             .filter((d) => d.name)
+          Object.keys(c.listData || {}).forEach((lid) => {
+            const block = c.listData[lid]
+            if (!block) return
+            block.rows = (block.rows || [])
+              .map((r) => ({
+                name: (r.name || '').trim(),
+                extras: r.extras && typeof r.extras === 'object' ? r.extras : {},
+              }))
+              .filter((r) => r.name)
+          })
           delete c._shownDims
           delete c._dishMark
           delete c._arrangeMode
@@ -1302,7 +1626,7 @@
         }
         const changed = arrangeSnapshot(c) !== c._arrangeSnapshot
         const finishArrange = (asDefault) => {
-          if (asDefault) S.saveDefaultLayout(c.fieldOrder, c.dimOrder)
+          if (asDefault) S.saveDefaultLayout(c.fieldOrder, c.dimOrder, c.dishColOrder, S.collectListColOrders(c))
           c._arrangeMode = false
           delete c._arrangeSnapshot
           refresh()
@@ -1332,6 +1656,13 @@
           c.dishes[i].rating = val
           delete c.dishes[i].mark
         }
+        paintStars(grp, val)
+        return
+      }
+      const xStars = grp.closest('[data-x-stars]')?.dataset.xStars
+      if (xStars != null) {
+        const { listKey, rowIndex, dimId } = parseExtraKey(xStars)
+        setListRowExtra(c, listKey, rowIndex, dimId, val)
         paintStars(grp, val)
         return
       }
@@ -1504,27 +1835,6 @@
       }
     }
 
-    const reindexDishes = () => {
-      root().querySelectorAll('[data-dish-row]').forEach((row, i) => {
-        row.dataset.dishRow = String(i)
-        const name = row.querySelector('[data-dish-name]')
-        const stars = row.querySelector('[data-dish-stars]')
-        const rm = row.querySelector('[data-rm-dish]')
-        if (name) name.dataset.dishName = String(i)
-        if (stars) stars.dataset.dishStars = String(i)
-        if (rm) rm.dataset.rmDish = String(i)
-      })
-    }
-    const bindDishStars = (wrap) => {
-      bindStars(wrap, (val, grp) => {
-        const i = Number(grp.closest('[data-dish-stars]')?.dataset.dishStars)
-        if (c.dishes[i]) {
-          c.dishes[i].rating = val
-          delete c.dishes[i].mark
-        }
-        paintStars(grp, val)
-      })
-    }
     const dishAdd = document.getElementById('dishAdd')
     if (dishAdd) {
       dishAdd.onclick = (e) => {
@@ -1532,30 +1842,8 @@
         pressThen(dishAdd, () => {
           sync()
           c.dishes = c.dishes || []
-          c.dishes.push({ name: '', rating: 5 })
-          const i = c.dishes.length - 1
-          const list = document.getElementById('dishList')
-          const row = document.createElement('div')
-          row.className = 'dish-edit-row'
-          row.dataset.dishRow = String(i)
-          row.innerHTML = `
-          <input class="pinput" data-dish-name="${i}" value="" placeholder="菜名…">
-          <span data-dish-stars="${i}">${starsHtml(5, { size: 16 })}</span>
-          <span class="dish-rm" data-rm-dish="${i}">✕</span>`
-          list.appendChild(row)
-          row.querySelector('[data-dish-name]').oninput = (ev) => {
-            const idx = Number(ev.target.dataset.dishName)
-            if (c.dishes[idx]) c.dishes[idx].name = ev.target.value
-          }
-          row.querySelector('[data-rm-dish]').onclick = () => {
-            sync()
-            const idx = Number(row.dataset.dishRow)
-            c.dishes.splice(idx, 1)
-            row.remove()
-            reindexDishes()
-          }
-          bindDishStars(row)
-          row.querySelector('input').focus()
+          c.dishes.push({ name: '', rating: 5, extras: {} })
+          refresh()
         })
       }
     }
@@ -1564,8 +1852,8 @@
         sync()
         const idx = Number(el.dataset.rmDish)
         c.dishes.splice(idx, 1)
-        el.closest('[data-dish-row]')?.remove()
-        reindexDishes()
+        if (!c.dishes.length) c.dishes = [{ name: '', rating: 5, extras: {} }]
+        refresh()
       }
     })
     root().querySelectorAll('[data-dish-name]').forEach((el) => {
@@ -1579,6 +1867,17 @@
         c.dims = { ...c.dims, [el.dataset.dim]: el.value }
       }
     })
+    root().querySelectorAll('[data-dim-num]').forEach((el) => {
+      el.oninput = () => {
+        const raw = el.value
+        if (raw === '') {
+          c.dims = { ...c.dims, [el.dataset.dimNum]: null }
+          return
+        }
+        const n = Number(raw)
+        c.dims = { ...c.dims, [el.dataset.dimNum]: Number.isFinite(n) ? n : null }
+      }
+    })
     root().querySelectorAll('[data-dim-bin]').forEach((row) => {
       row.querySelectorAll('.toggle-opt').forEach((el) => {
         el.onclick = () => {
@@ -1587,13 +1886,103 @@
         }
       })
     })
-    root().querySelectorAll('[data-dim-ter]').forEach((row) => {
+    root().querySelectorAll('[data-dim-choice], [data-dim-ter]').forEach((row) => {
       row.querySelectorAll('.toggle-opt').forEach((el) => {
         el.onclick = () => {
-          c.dims = { ...c.dims, [row.dataset.dimTer]: Number(el.dataset.v) }
+          const id = row.dataset.dimChoice || row.dataset.dimTer
+          c.dims = { ...c.dims, [id]: Number(el.dataset.v) }
           setToggleOn(row, el)
         }
       })
+    })
+
+    const bindExtraControls = (scope = root()) => {
+      scope.querySelectorAll('[data-x-text]').forEach((el) => {
+        el.oninput = () => {
+          const { listKey, rowIndex, dimId } = parseExtraKey(el.dataset.xText)
+          setListRowExtra(c, listKey, rowIndex, dimId, el.value)
+        }
+      })
+      scope.querySelectorAll('[data-x-num]').forEach((el) => {
+        el.oninput = () => {
+          const { listKey, rowIndex, dimId } = parseExtraKey(el.dataset.xNum)
+          const raw = el.value
+          if (raw === '') {
+            setListRowExtra(c, listKey, rowIndex, dimId, null)
+            return
+          }
+          const n = Number(raw)
+          setListRowExtra(c, listKey, rowIndex, dimId, Number.isFinite(n) ? n : null)
+        }
+      })
+      scope.querySelectorAll('[data-x-bin]').forEach((row) => {
+        row.querySelectorAll('.toggle-opt').forEach((el) => {
+          el.onclick = () => {
+            const { listKey, rowIndex, dimId } = parseExtraKey(row.dataset.xBin)
+            setListRowExtra(c, listKey, rowIndex, dimId, el.dataset.v === '1')
+            setToggleOn(row, el)
+          }
+        })
+      })
+      scope.querySelectorAll('[data-x-choice]').forEach((row) => {
+        row.querySelectorAll('.toggle-opt').forEach((el) => {
+          el.onclick = () => {
+            const { listKey, rowIndex, dimId } = parseExtraKey(row.dataset.xChoice)
+            setListRowExtra(c, listKey, rowIndex, dimId, Number(el.dataset.v))
+            setToggleOn(row, el)
+          }
+        })
+      })
+    }
+    bindExtraControls()
+
+    root().querySelectorAll('[data-rm-dish-col]').forEach((btn) => {
+      btn.onclick = (e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        const id = btn.dataset.rmDishCol
+        c.dishColOrder = (c.dishColOrder || []).filter((x) => x !== id)
+        refresh()
+      }
+    })
+    root().querySelectorAll('[data-rm-list-col]').forEach((btn) => {
+      btn.onclick = (e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        const [listId, colId] = String(btn.dataset.rmListCol).split('|')
+        const block = c.listData?.[listId]
+        if (block) block.colOrder = (block.colOrder || []).filter((x) => x !== colId)
+        refresh()
+      }
+    })
+    root().querySelectorAll('[data-list-name]').forEach((el) => {
+      el.oninput = () => {
+        const [listId, idx] = String(el.dataset.listName).split('|')
+        const row = c.listData?.[listId]?.rows?.[Number(idx)]
+        if (row) row.name = el.value
+      }
+    })
+    root().querySelectorAll('[data-rm-list-row]').forEach((el) => {
+      el.onclick = () => {
+        sync()
+        const [listId, idx] = String(el.dataset.rmListRow).split('|')
+        const block = c.listData?.[listId]
+        if (!block) return
+        block.rows.splice(Number(idx), 1)
+        if (!block.rows.length) block.rows = [S.emptyListRow()]
+        refresh()
+      }
+    })
+    root().querySelectorAll('[data-list-row-add]').forEach((btn) => {
+      btn.onclick = () => {
+        pressThen(btn, () => {
+          sync()
+          const listId = btn.dataset.listRowAdd
+          const block = S.ensureListBlock(c, listId)
+          block.rows.push(S.emptyListRow())
+          refresh()
+        })
+      }
     })
 
     /* —— 编排：长按排序 + 左滑删除 —— */
@@ -1618,9 +2007,10 @@
           row.classList.remove('swiping')
         }
 
-        /* 左滑删除：在内容区（不含把手） */
+        /* 左滑删除：在内容区（不含把手）；触控 + 鼠标均可 */
         list.querySelectorAll('[data-field-row]').forEach((row) => {
           const content = row.querySelector('.field-swipe-content')
+          const delBtn = row.querySelector('.field-swipe-del')
           const locked = row.dataset.locked === '1'
           let mode = null
           let startX = 0
@@ -1646,6 +2036,7 @@
             }
             if (mode === 'swipe') {
               if (e) e.preventDefault()
+              content.style.transition = 'none'
               content.style.transform = `translateX(${Math.min(0, Math.max(dx, -88))}px)`
               row.classList.add('swiping')
             }
@@ -1656,22 +2047,27 @@
               return
             }
             tracking = false
+            content.style.transition = ''
             if (mode === 'swipe') {
               const m = (content.style.transform.match(/-?\d+/) || [0])[0]
-              if (Number(m) < -56) {
-                removeField(row.dataset.fieldId)
-                return
+              if (Number(m) < -48) {
+                content.style.transform = 'translateX(-76px)'
+                row.classList.add('swiping')
+              } else {
+                resetSwipe(row)
               }
-              resetSwipe(row)
             }
             mode = null
           }
 
+          const shouldIgnore = (target) =>
+            target.closest('.field-drag-handle') ||
+            target.closest('input, textarea, button, .star, .toggle-opt, .level-opt, .chip, .photo-cell, .chip-x')
+
           content.addEventListener(
             'touchstart',
             (e) => {
-              if (e.target.closest('.field-drag-handle')) return
-              if (e.target.closest('input, textarea, button, .star, .toggle-opt, .level-opt, .chip, .photo-cell')) return
+              if (shouldIgnore(e.target)) return
               onStart(e.touches[0].clientX, e.touches[0].clientY)
             },
             { passive: true }
@@ -1679,13 +2075,35 @@
           content.addEventListener(
             'touchmove',
             (e) => {
-              if (e.target.closest('.field-drag-handle')) return
+              if (shouldIgnore(e.target)) return
               onMove(e.touches[0].clientX, e.touches[0].clientY, e)
             },
             { passive: false }
           )
           content.addEventListener('touchend', onEnd)
           content.addEventListener('touchcancel', onEnd)
+
+          content.addEventListener('mousedown', (e) => {
+            if (e.button !== 0) return
+            if (shouldIgnore(e.target)) return
+            onStart(e.clientX, e.clientY)
+            const move = (ev) => onMove(ev.clientX, ev.clientY, ev)
+            const up = () => {
+              onEnd()
+              window.removeEventListener('mousemove', move)
+              window.removeEventListener('mouseup', up)
+            }
+            window.addEventListener('mousemove', move)
+            window.addEventListener('mouseup', up)
+          })
+
+          if (delBtn && !locked) {
+            delBtn.onclick = (e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              removeField(row.dataset.fieldId)
+            }
+          }
         })
 
         /* 三横线把手拖动排序 */
@@ -1758,7 +2176,11 @@
             drag.row.classList.remove('field-drag-source')
             const next = [...list.querySelectorAll('[data-field-row]')].map((r) => r.dataset.fieldId)
             c.fieldOrder = next
-            c.dimOrder = next.filter((id) => !S.isCoreField(id))
+            c.dimOrder = next.filter((id) => {
+              if (S.isCoreField(id)) return false
+              const d = S.getDefs().find((x) => x.id === id)
+              return d ? S.isCardAttach(d) : false
+            })
             drag = null
             setEditScroll(c._editScroll || 0)
           }
@@ -1827,45 +2249,59 @@
         const renderPicker = () => {
           const listScroll = sheet.querySelector('.dim-picker-list')?.scrollTop || 0
           const checked = new Set(draft)
-          const coreRows = OPTIONAL_CORE.map((item) => {
-            const on = checked.has(item.id)
-            return `<div class="dim-picker-row" data-pick="${item.id}">
+          const coreRows = OPTIONAL_CORE.filter((item) => !checked.has(item.id))
+            .map(
+              (item) => `<div class="dim-picker-row" data-pick="${item.id}">
               <div class="dim-picker-main">
                 <div class="input-label dim-picker-name">${escapeHtml(item.name)}</div>
                 <div class="dim-picker-sub">基础字段</div>
               </div>
-              <label class="pix-check ${on ? 'on' : ''}" data-check="${item.id}">
-                <span class="pix-check-box">${on ? '✓' : ''}</span>
+              <label class="pix-check" data-check="${item.id}">
+                <span class="pix-check-box"></span>
               </label>
             </div>`
-          }).join('')
+            )
+            .join('')
           const dimRows = defs
-            .map((d) => {
-              const on = checked.has(d.id)
-              return `<div class="dim-picker-row" data-pick="${d.id}">
+            .filter((d) => {
+              if (S.isListCol(d)) return false
+              if (checked.has(d.id)) return false
+              if (S.isListBlock(d)) return true
+              return S.isCardAttach(d)
+            })
+            .map(
+              (d) => `<div class="dim-picker-row" data-pick="${d.id}">
                 <div class="dim-picker-main">
                   <div class="input-label dim-picker-name">${escapeHtml(d.name)}</div>
                   ${dimPreviewControl(d, c.dims?.[d.id])}
                 </div>
-                <label class="pix-check ${on ? 'on' : ''}" data-check="${d.id}">
-                  <span class="pix-check-box">${on ? '✓' : ''}</span>
+                <button type="button" class="dim-picker-del" data-del-def="${d.id}" title="从组件库删除" aria-label="删除">×</button>
+                <label class="pix-check" data-check="${d.id}">
+                  <span class="pix-check-box"></span>
                 </label>
               </div>`
-            })
+            )
             .join('')
 
           sheet.style.display = 'flex'
           sheet.innerHTML = `
             <div class="sheet dim-picker-sheet" onclick="event.stopPropagation()">
               <div class="sheet-head">
-                <span>添加维度</span>
+                <span>添加组件</span>
                 <span class="sheet-close" id="pickerClose">✕</span>
               </div>
               <div class="dim-picker-list">
                 ${coreRows}${dimRows}
+                <div class="dim-picker-row dim-picker-custom" id="newListEntry">
+                  <div class="dim-picker-main">
+                    <div class="input-label dim-picker-name">新建列表</div>
+                    <div class="dim-picker-sub">可重复填写的区块</div>
+                  </div>
+                  <span class="dim-picker-arrow">›</span>
+                </div>
                 <div class="dim-picker-row dim-picker-custom" id="customDimEntry">
                   <div class="dim-picker-main">
-                    <div class="input-label dim-picker-name">自定义维度</div>
+                    <div class="input-label dim-picker-name">自定义组件</div>
                     <div class="dim-picker-sub">新建一种填写方式并加入本卡</div>
                   </div>
                   <span class="dim-picker-arrow">›</span>
@@ -1903,7 +2339,15 @@
               if (!next.includes(id)) next.push(id)
             })
             c.fieldOrder = next
-            c.dimOrder = next.filter((id) => !S.isCoreField(id))
+            c.dimOrder = next.filter((id) => {
+              if (S.isCoreField(id)) return false
+              const d = S.getDefs().find((x) => x.id === id)
+              return d ? S.isCardAttach(d) : false
+            })
+            next.forEach((id) => {
+              const d = S.getDefs().find((x) => x.id === id)
+              if (d && S.isListBlock(d)) S.ensureListBlock(c, id)
+            })
             sheet.style.display = 'none'
             unlockScroll()
             refresh()
@@ -1929,7 +2373,32 @@
             row.onclick = (e) => {
               e.stopPropagation()
               if (e.target.closest('[data-check]')) return
+              if (e.target.closest('[data-del-def]')) return
               togglePick(row.dataset.pick)
+            }
+          })
+          sheet.querySelectorAll('[data-del-def]').forEach((btn) => {
+            btn.onclick = (e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              const id = btn.dataset.delDef
+              const def = S.getDefs().find((d) => d.id === id)
+              const name = def?.name || '该组件'
+              openAppModal({
+                title: '删除这个组件？',
+                body: `「${name}」会从组件库移除，已写在饭卡上的相关内容也会清掉。`,
+                confirmText: '删除',
+                cancelText: '取消',
+                confirmPrimary: false,
+                onConfirm: () => {
+                  S.deleteDef(id)
+                  draft = draft.filter((x) => x !== id)
+                  c.fieldOrder = (c.fieldOrder || []).filter((x) => x !== id)
+                  c.dimOrder = (c.dimOrder || []).filter((x) => x !== id)
+                  c.dishColOrder = (c.dishColOrder || []).filter((x) => x !== id)
+                  renderPicker()
+                },
+              })
             }
           })
           document.getElementById('customDimEntry').onclick = (e) => {
@@ -1937,10 +2406,24 @@
             openNewDimForm(sheet, {
               onBack: () => renderPicker(),
               onCreated: (newId) => {
-                if (!draft.includes(newId)) draft = [...draft, newId]
-                const created = S.getDefs().find((d) => d.id === newId)
-                if (created && !defs.some((d) => d.id === newId)) defs.push(created)
-                renderPicker()
+                if (!c.fieldOrder.includes(newId)) c.fieldOrder = [...c.fieldOrder, newId]
+                if (!c.dimOrder.includes(newId)) c.dimOrder = [...c.dimOrder, newId]
+                sheet.style.display = 'none'
+                unlockScroll()
+                refresh()
+              },
+            })
+          }
+          document.getElementById('newListEntry').onclick = (e) => {
+            e.stopPropagation()
+            openNewListForm(sheet, {
+              onBack: () => renderPicker(),
+              onCreated: (newId) => {
+                if (!c.fieldOrder.includes(newId)) c.fieldOrder = [...c.fieldOrder, newId]
+                S.ensureListBlock(c, newId)
+                sheet.style.display = 'none'
+                unlockScroll()
+                refresh()
               },
             })
           }
@@ -1949,49 +2432,92 @@
         renderPicker()
       }
 
-      const openNewDimForm = (sheet, { onBack, onCreated } = {}) => {
+      const openNewListForm = (sheet, { onBack, onCreated } = {}) => {
         sheet.innerHTML = `
           <div class="sheet dim-picker-sheet" onclick="event.stopPropagation()">
             <div class="sheet-head">
-              <span>自定义维度</span>
+              <span>新建列表</span>
+              <span class="sheet-close" id="newListClose">✕</span>
+            </div>
+            <div class="edit-section">
+              <label class="input-label">名称 <span class="req">*</span></label>
+              <input class="pinput" id="newListName" placeholder="如：同行人、推荐菜">
+            </div>
+            <div class="sheet-btns">
+              <button type="button" class="btn btn-ghost" id="newListBack">返回</button>
+              <button type="button" class="btn btn-primary" id="newListSave">确认</button>
+            </div>
+          </div>`
+        document.getElementById('newListClose').onclick = () => {
+          sheet.style.display = 'none'
+        }
+        document.getElementById('newListBack').onclick = (e) => {
+          e.stopPropagation()
+          if (typeof onBack === 'function') onBack()
+          else openDimPicker()
+        }
+        document.getElementById('newListSave').onclick = (e) => {
+          e.stopPropagation()
+          const name = document.getElementById('newListName').value.trim()
+          if (!name) return alert('请填写名称')
+          const def = {
+            id: S.uid('list'),
+            name,
+            type: 'list',
+            attach: 'card',
+            enabled: true,
+            order: S.getDefs().length,
+          }
+          S.upsertDef(def)
+          S.ensureListBlock(c, def.id)
+          if (typeof onCreated === 'function') onCreated(def.id)
+          else {
+            c.fieldOrder = [...c.fieldOrder, def.id]
+            sheet.style.display = 'none'
+            refresh()
+          }
+        }
+      }
+
+      const openNewDimForm = (sheet, { onBack, onCreated, attach = 'card', listId = null } = {}) => {
+        const draftRef = { options: ['是', '否'], unit: '' }
+        const title =
+          attach === 'dishes' ? '添加列表列' : attach === 'list' ? '添加列表列' : '自定义组件'
+        sheet.innerHTML = `
+          <div class="sheet dim-picker-sheet" onclick="event.stopPropagation()">
+            <div class="sheet-head">
+              <span>${title}</span>
               <span class="sheet-close" id="newDimClose">✕</span>
             </div>
             <div class="edit-section">
               <label class="input-label">名称 <span class="req">*</span></label>
-              <input class="pinput" id="newDimName" placeholder="如：环境、排队">
+              <input class="pinput" id="newDimName" placeholder="${attach === 'card' ? '如：环境、排队、等待时间' : '如：价格、备注、份量'}">
             </div>
             <div class="edit-section">
               <label class="input-label">填写方式</label>
               <div class="type-pick-grid">
                 <div class="type-pick on" data-type="stars"><span class="type-pick-ico">★</span>星级</div>
-                <div class="type-pick" data-type="binary"><span class="type-pick-ico">⇄</span>两种选项</div>
-                <div class="type-pick" data-type="ternary"><span class="type-pick-ico">☰</span>三种选项</div>
+                <div class="type-pick" data-type="choice"><span class="type-pick-ico">☰</span>选项</div>
+                <div class="type-pick" data-type="number"><span class="type-pick-ico">#</span>数字</div>
                 <div class="type-pick" data-type="text"><span class="type-pick-ico">T</span>文字</div>
               </div>
             </div>
             <div class="edit-section" id="newDimOpts"></div>
             <div class="sheet-btns">
-              <button type="button" class="btn btn-ghost" id="newDimBack">返回</button>
+              <button type="button" class="btn btn-ghost" id="newDimBack">${attach === 'card' ? '返回' : '取消'}</button>
               <button type="button" class="btn btn-primary" id="newDimSave">确认</button>
             </div>
           </div>`
         let type = 'stars'
-        const renderOpts = () => {
-          const box = document.getElementById('newDimOpts')
-          if (type === 'binary') {
-            box.innerHTML = `<label class="input-label">选项文案</label><div class="opt-row">
-              <input class="pinput" id="no0" value="是"><input class="pinput" id="no1" value="否"></div>`
-          } else if (type === 'ternary') {
-            box.innerHTML = `<label class="input-label">选项文案</label><div class="opt-row">
-              <input class="pinput" id="no0" value="好"><input class="pinput" id="no1" value="中"><input class="pinput" id="no2" value="差"></div>`
-          } else box.innerHTML = ''
-        }
-        renderOpts()
+        const cfg = bindDimTypeConfig(document.getElementById('newDimOpts'), () => type, draftRef)
         sheet.querySelectorAll('.type-pick').forEach((el) => {
           el.onclick = () => {
             type = el.dataset.type
             sheet.querySelectorAll('.type-pick').forEach((x) => x.classList.toggle('on', x === el))
-            renderOpts()
+            if (type === 'choice' && (!draftRef.options || draftRef.options.length < 2)) {
+              draftRef.options = ['是', '否']
+            }
+            cfg.refresh()
           }
         })
         document.getElementById('newDimClose').onclick = () => {
@@ -2000,29 +2526,42 @@
         document.getElementById('newDimBack').onclick = (e) => {
           e.stopPropagation()
           if (typeof onBack === 'function') onBack()
-          else openDimPicker()
+          else if (attach === 'card') openDimPicker()
+          else sheet.style.display = 'none'
         }
         document.getElementById('newDimSave').onclick = (e) => {
           e.stopPropagation()
           const name = document.getElementById('newDimName').value.trim()
           if (!name) return alert('请填写名称')
-          let options
-          if (type === 'binary') options = [document.getElementById('no0').value || '是', document.getElementById('no1').value || '否']
-          if (type === 'ternary')
-            options = [
-              document.getElementById('no0').value || '好',
-              document.getElementById('no1').value || '中',
-              document.getElementById('no2').value || '差',
-            ]
+          const collected = cfg.collect()
+          if (type === 'choice' && (!collected.options || collected.options.length < 2)) {
+            return alert('至少需要两个选项')
+          }
           const def = {
             id: S.uid('dim'),
             name,
             type,
-            options,
+            options: type === 'choice' ? collected.options : undefined,
+            unit: type === 'number' ? collected.unit || '' : undefined,
+            attach: attach === 'list' ? 'list' : attach === 'dishes' ? 'dishes' : 'card',
+            listId: attach === 'list' ? listId : undefined,
             enabled: true,
             order: S.getDefs().length,
           }
           S.upsertDef(def)
+          if (attach === 'dishes') {
+            c.dishColOrder = [...(c.dishColOrder || []), def.id]
+            sheet.style.display = 'none'
+            refresh()
+            return
+          }
+          if (attach === 'list' && listId) {
+            const block = S.ensureListBlock(c, listId)
+            block.colOrder = [...(block.colOrder || []), def.id]
+            sheet.style.display = 'none'
+            refresh()
+            return
+          }
           if (typeof onCreated === 'function') onCreated(def.id)
           else {
             c.dimOrder = [...c.dimOrder, def.id]
@@ -2033,10 +2572,68 @@
         }
       }
 
+      const openListColForm = (listKey) => {
+        const view = document.getElementById('editView')
+        c._editScroll = view?.scrollTop || 0
+        if (view) {
+          view.classList.add('scroll-locked')
+          view.scrollTop = c._editScroll
+        }
+        const sheet = document.getElementById('dimSheet')
+        sheet.style.display = 'flex'
+        const unlockScroll = () => {
+          if (view) {
+            view.classList.remove('scroll-locked')
+            view.scrollTop = c._editScroll || 0
+          }
+        }
+        const attach = listKey === 'dishes' ? 'dishes' : 'list'
+        openNewDimForm(sheet, {
+          attach,
+          listId: listKey === 'dishes' ? null : listKey,
+          onBack: () => {
+            sheet.style.display = 'none'
+            unlockScroll()
+          },
+        })
+        const origClose = document.getElementById('newDimClose')?.onclick
+        const wrapClose = (e) => {
+          if (e) e.stopPropagation()
+          sheet.style.display = 'none'
+          unlockScroll()
+        }
+        if (origClose) {
+          document.getElementById('newDimClose').onclick = wrapClose
+        }
+        sheet.onclick = wrapClose
+        const back = document.getElementById('newDimBack')
+        if (back) {
+          back.onclick = (e) => {
+            e.stopPropagation()
+            wrapClose()
+          }
+        }
+        const saveBtn = document.getElementById('newDimSave')
+        if (saveBtn) {
+          const prev = saveBtn.onclick
+          saveBtn.onclick = (e) => {
+            prev?.(e)
+            unlockScroll()
+          }
+        }
+      }
+
       document.getElementById('addDimBtn').onclick = () => {
         const btn = document.getElementById('addDimBtn')
         pressThen(btn, () => openDimPicker())
       }
+      const dishColAdd = document.getElementById('dishColAdd')
+      if (dishColAdd) {
+        dishColAdd.onclick = () => pressThen(dishColAdd, () => openListColForm('dishes'))
+      }
+      root().querySelectorAll('[data-list-col-add]').forEach((btn) => {
+        btn.onclick = () => pressThen(btn, () => openListColForm(btn.dataset.listColAdd))
+      })
     }
   }
 
@@ -2110,7 +2707,6 @@
 
   function viewTemplate() {
     const defs = S.getDefs()
-    const typeLabel = { text: '文本', binary: '二态', ternary: '三态', stars: '星级' }
 
     root().innerHTML = `
       <div class="view">
@@ -2127,7 +2723,7 @@
             <div class="def-card frame">
               <div class="def-name">${escapeHtml(d.name)}</div>
               <div class="def-meta">
-                <span class="type-tag">${typeLabel[d.type]}</span>
+                <span class="type-tag">${escapeHtml(dimTypeTag(d))}${d.type === 'number' && d.unit ? ` · ${escapeHtml(d.unit)}` : ''}</span>
                 <span class="en-tag ${d.enabled ? 'on' : ''}">${d.enabled ? '启用' : '停用'}</span>
               </div>
               <div class="def-actions">
@@ -2149,8 +2745,27 @@
 
     const openEditor = (def) => {
       const draft = def
-        ? { ...def, options: [...(def.options || [])] }
-        : { id: S.uid('dim'), name: '', type: 'text', options: [], enabled: true, order: defs.length }
+        ? { ...def, options: [...(def.options || [])], unit: def.unit || '' }
+        : {
+            id: S.uid('dim'),
+            name: '',
+            type: 'stars',
+            options: ['是', '否'],
+            unit: '',
+            attach: 'card',
+            enabled: true,
+            order: defs.length,
+          }
+      const draftRef = {
+        options: draft.options.length ? [...draft.options] : ['是', '否'],
+        unit: draft.unit || '',
+      }
+      const typeChoices = S.isListBlock(draft)
+        ? ['list']
+        : ['stars', 'choice', 'number', 'text']
+      if (!S.isListBlock(draft) && (draft.type === 'binary' || draft.type === 'ternary')) {
+        typeChoices.push(draft.type)
+      }
       const sheet = document.getElementById('sheet')
       sheet.style.display = 'flex'
       sheet.innerHTML = `
@@ -2158,10 +2773,13 @@
           <div class="sheet-head"><span>${def ? '编辑维度' : '新增维度'}</span><span style="cursor:pointer" id="sheetClose">✕</span></div>
           <div class="edit-section"><label class="input-label">名称 <span class="req">*</span></label>
             <input class="pinput" id="dName" value="${escapeHtml(draft.name)}"></div>
-          <div class="edit-section"><label class="input-label">类型</label>
-            <select class="pinput" id="dType">
-              ${['text', 'binary', 'ternary', 'stars'].map((t) => `<option value="${t}" ${draft.type === t ? 'selected' : ''}>${typeLabel[t]}</option>`).join('')}
-            </select></div>
+          <div class="edit-section"><label class="input-label">填写方式</label>
+            <select class="pinput" id="dType" ${S.isListBlock(draft) || S.isListCol(draft) ? 'disabled' : ''}>
+              ${typeChoices.map((t) => `<option value="${t}" ${draft.type === t ? 'selected' : ''}>${DIM_TYPE_LABEL[t] || t}</option>`).join('')}
+            </select>
+            ${S.isListCol(draft) ? `<div class="dim-picker-sub" style="margin-top:6px">列表列 · ${draft.attach === 'dishes' ? '菜品' : escapeHtml(draft.listId || '')}</div>` : ''}
+            ${S.isListBlock(draft) ? `<div class="dim-picker-sub" style="margin-top:6px">列表区块</div>` : ''}
+          </div>
           <div class="edit-section" id="opts"></div>
           <div class="edit-section" style="display:flex;justify-content:space-between;align-items:center">
             <span class="input-label" style="margin:0">启用</span>
@@ -2173,21 +2791,19 @@
           </div>
         </div>`
 
-      const renderOpts = () => {
-        const t = document.getElementById('dType').value
-        const box = document.getElementById('opts')
-        if (t === 'binary') {
-          const o = draft.options.length ? draft.options : ['是', '否']
-          box.innerHTML = `<label class="input-label">选项文案</label><div class="opt-row">
-            <input class="pinput" id="o0" value="${escapeHtml(o[0] || '是')}"><input class="pinput" id="o1" value="${escapeHtml(o[1] || '否')}"></div>`
-        } else if (t === 'ternary') {
-          const o = draft.options.length ? draft.options : ['好', '中', '差']
-          box.innerHTML = `<label class="input-label">选项文案</label><div class="opt-row">
-            <input class="pinput" id="o0" value="${escapeHtml(o[0] || '好')}"><input class="pinput" id="o1" value="${escapeHtml(o[1] || '中')}"><input class="pinput" id="o2" value="${escapeHtml(o[2] || '差')}"></div>`
-        } else box.innerHTML = ''
+      const cfg = S.isListBlock(draft)
+        ? { refresh: () => {}, collect: () => ({}) }
+        : bindDimTypeConfig(document.getElementById('opts'), () => document.getElementById('dType').value, draftRef)
+      const typeEl = document.getElementById('dType')
+      if (typeEl && !typeEl.disabled) {
+        typeEl.onchange = () => {
+          const t = typeEl.value
+          if ((t === 'choice' || t === 'binary' || t === 'ternary') && draftRef.options.length < 2) {
+            draftRef.options = defaultChoiceOptions(t)
+          }
+          cfg.refresh()
+        }
       }
-      renderOpts()
-      document.getElementById('dType').onchange = renderOpts
       document.getElementById('dEn').onclick = () => {
         draft.enabled = !draft.enabled
         const el = document.getElementById('dEn')
@@ -2203,16 +2819,26 @@
       document.getElementById('dSave').onclick = () => {
         const name = document.getElementById('dName').value.trim()
         if (!name) return alert('请填写维度名')
+        if (S.isListBlock(draft)) {
+          S.upsertDef({ ...draft, name, type: 'list', attach: 'card', enabled: draft.enabled })
+          viewTemplate()
+          return
+        }
         const type = document.getElementById('dType').value
-        let options
-        if (type === 'binary') options = [document.getElementById('o0').value || '是', document.getElementById('o1').value || '否']
-        if (type === 'ternary')
-          options = [
-            document.getElementById('o0').value || '好',
-            document.getElementById('o1').value || '中',
-            document.getElementById('o2').value || '差',
-          ]
-        S.upsertDef({ ...draft, name, type, options, enabled: draft.enabled })
+        const collected = cfg.collect()
+        if ((type === 'choice' || type === 'binary' || type === 'ternary') && (!collected.options || collected.options.length < 2)) {
+          return alert('至少需要两个选项')
+        }
+        S.upsertDef({
+          ...draft,
+          name,
+          type,
+          options: collected.options,
+          unit: collected.unit,
+          attach: draft.attach || 'card',
+          listId: draft.listId,
+          enabled: draft.enabled,
+        })
         viewTemplate()
       }
       document.getElementById('dDel').onclick = () => {
