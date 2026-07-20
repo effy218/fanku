@@ -1506,6 +1506,17 @@ button:active,
 .level-opt.lv-rec { background: var(--lv-rec); color: #fff; }
 .level-opt.lv-normal { background: var(--lv-normal); color: #fff; }
 .level-opt.lv-avoid { background: var(--lv-avoid); color: #fff; }
+.loc-row { display: flex; gap: 6px; align-items: stretch; }
+.loc-row .pinput { flex: 1; min-width: 0; }
+.loc-row .btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+  align-self: stretch;
+}
+.loc-row .btn:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
 .tag-add { display: flex; gap: 6px; margin-top: 8px; }
 .tag-add .pinput { flex: 1; padding: 8px 10px; font-size: 12px; }
 .more-panel { margin-top: 12px; padding: 12px; }

@@ -24,6 +24,99 @@
     return 3
   }
 
+  function geoErrorMessage(err) {
+    if (!err) return '定位失败，请稍后再试'
+    if (err.code === 1) return '没有定位权限，请在浏览器设置里允许后重试'
+    if (err.code === 2) return '暂时拿不到位置，请到开阔一点的地方再试'
+    if (err.code === 3) return '定位超时了，请再试一次'
+    return err.message || '定位失败，请稍后再试'
+  }
+
+  function formatGeoLabel(data, lat, lon) {
+    const admins = (data?.localityInfo?.administrative || [])
+      .filter((a) => a?.name && typeof a.adminLevel === 'number')
+      .sort((a, b) => a.adminLevel - b.adminLevel)
+      .map((a) => String(a.name).trim())
+      .filter((n) => n && n !== '中国' && n !== '中华人民共和国')
+    const city = (data?.city || '').trim()
+    const locality = (data?.locality || '').trim()
+    const pick = []
+    const district = admins.find((n) => /[区县市]$/.test(n) && n !== city) || admins[admins.length - 2] || ''
+    const area = locality || admins[admins.length - 1] || ''
+    if (district && area && district !== area) {
+      pick.push(district, area)
+    } else if (city && area && city !== area) {
+      pick.push(city, area)
+    } else if (district) {
+      pick.push(district)
+    } else if (area) {
+      pick.push(area)
+    } else if (city) {
+      pick.push(city)
+    }
+    const uniq = [...new Set(pick.filter(Boolean))]
+    if (uniq.length) return uniq.slice(0, 2).join('·')
+    if (Number.isFinite(lat) && Number.isFinite(lon)) return `${lat.toFixed(4)}, ${lon.toFixed(4)}`
+    return ''
+  }
+
+  function getDevicePosition() {
+    return new Promise((resolve, reject) => {
+      if (!navigator.geolocation) {
+        reject(Object.assign(new Error('这台设备不支持定位'), { code: 0 }))
+        return
+      }
+      if (!window.isSecureContext) {
+        reject(Object.assign(new Error('定位需要在网页版（https）使用，本地文件打开时不可用'), { code: 0 }))
+        return
+      }
+      navigator.geolocation.getCurrentPosition(resolve, reject, {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 60000,
+      })
+    })
+  }
+
+  async function reverseGeocode(lat, lon) {
+    const url = `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${encodeURIComponent(lat)}&longitude=${encodeURIComponent(lon)}&localityLanguage=zh`
+    const res = await fetch(url)
+    if (!res.ok) throw new Error('地址解析失败')
+    return res.json()
+  }
+
+  async function fillLocationFromGps(inputEl, btnEl) {
+    if (!inputEl) return
+    const prev = btnEl?.textContent
+    if (btnEl) {
+      btnEl.disabled = true
+      btnEl.textContent = '…'
+    }
+    try {
+      const pos = await getDevicePosition()
+      const lat = pos.coords.latitude
+      const lon = pos.coords.longitude
+      let label = ''
+      try {
+        const data = await reverseGeocode(lat, lon)
+        label = formatGeoLabel(data, lat, lon)
+      } catch (_) {
+        label = `${lat.toFixed(4)}, ${lon.toFixed(4)}`
+      }
+      if (label) {
+        inputEl.value = label
+        inputEl.dispatchEvent(new Event('input', { bubbles: true }))
+      }
+    } catch (err) {
+      alert(geoErrorMessage(err))
+    } finally {
+      if (btnEl) {
+        btnEl.disabled = false
+        btnEl.textContent = prev || '定位'
+      }
+    }
+  }
+
   const LEVEL_OPTS = [
     { key: 'strong', ico: '★', label: '强推' },
     { key: 'rec', ico: '✓', label: '推荐' },
@@ -947,7 +1040,10 @@
       }
       if (id === 'location') {
         return `<label class="input-label">位置</label>
-          <input class="pinput" id="fLoc" value="${escapeHtml(c.location || '')}">`
+          <div class="loc-row">
+            <input class="pinput" id="fLoc" value="${escapeHtml(c.location || '')}" placeholder="手动填写，或点定位">
+            <button type="button" class="btn btn-sm" id="locBtn" title="获取当前位置">定位</button>
+          </div>`
       }
       if (id === 'date') {
         return `<label class="input-label">日期 <span class="req">*</span></label>
@@ -1261,6 +1357,12 @@
             },
           })
         })
+      }
+    }
+    const locBtn = document.getElementById('locBtn')
+    if (locBtn) {
+      locBtn.onclick = () => {
+        pressThen(locBtn, () => fillLocationFromGps(document.getElementById('fLoc'), locBtn))
       }
     }
     const tagAdd = document.getElementById('tagAdd')
