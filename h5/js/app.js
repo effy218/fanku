@@ -336,6 +336,69 @@
     }
   }
 
+  function pressThen(el, fn, ms = 80) {
+    if (!el) {
+      fn?.()
+      return
+    }
+    el.classList.add('is-pressing')
+    setTimeout(() => {
+      el.classList.remove('is-pressing')
+      fn?.()
+    }, ms)
+  }
+
+  /** 全站按下态：避免部分控件还没绑 pressThen 时没有反馈 */
+  function installGlobalPress() {
+    if (window.__fankuPressBound) return
+    window.__fankuPressBound = true
+    const sel = [
+      'button',
+      '.btn',
+      '.toggle-opt',
+      '.chip',
+      '.level-opt',
+      '.home-fab',
+      '.home-search-btn',
+      '.detail-back',
+      '.detail-edit',
+      '.eh-close',
+      '.sheet-close',
+      '.photo-cell',
+      '.dish-rm',
+      '.icon-pick-btn',
+      '.icon-pick-cell',
+      '.icon-auto-row',
+      '.backup-row',
+      '.danger-row',
+      '.cuisine-chip',
+      '.result-card',
+      '.dim-picker-row',
+      '.type-pick',
+      '.field-drag-handle',
+      '.ht-logo',
+      '.chip-x',
+      '.act',
+    ].join(',')
+    document.addEventListener(
+      'pointerdown',
+      (e) => {
+        const el = e.target.closest(sel)
+        if (!el || el.closest('.pile-card')) return
+        el.classList.add('is-pressing')
+      },
+      true
+    )
+    const clear = () => {
+      document.querySelectorAll('.is-pressing').forEach((el) => {
+        if (!el.classList.contains('pile-card')) el.classList.remove('is-pressing')
+      })
+    }
+    document.addEventListener('pointerup', clear, true)
+    document.addEventListener('pointercancel', clear, true)
+    document.addEventListener('pointerleave', clear, true)
+  }
+
   function highlight(text, q) {
     const src = escapeHtml(text)
     if (!q) return src
@@ -427,7 +490,9 @@
       </div>`
 
     document.getElementById('searchToggle').onclick = () => {
-      document.getElementById('homeHeader').classList.toggle('expanded')
+      pressThen(document.getElementById('searchToggle'), () => {
+        document.getElementById('homeHeader').classList.toggle('expanded')
+      }, 60)
     }
     document.getElementById('homeSearch').onkeydown = (e) => {
       if (e.key === 'Enter') {
@@ -436,8 +501,10 @@
       }
     }
     document.getElementById('fab').onclick = () => {
-      editState = S.emptyCard()
-      go('edit')
+      pressThen(document.getElementById('fab'), () => {
+        editState = S.emptyCard()
+        go('edit')
+      })
     }
 
     const downloadBackup = () => {
@@ -537,17 +604,60 @@
       }
     }
 
-    document.getElementById('logoBtn').onclick = openBackupSheet
+    document.getElementById('logoBtn').onclick = () => pressThen(document.getElementById('logoBtn'), openBackupSheet)
     document.getElementById('backupFile').onchange = (e) => {
       const file = e.target.files?.[0]
       e.target.value = ''
       runImportFile(file)
     }
-    root().querySelectorAll('.pile-card').forEach((el) => {
-      el.onclick = () => {
-        el.style.boxShadow = '3px 3px 0 var(--brand)'
-        setTimeout(() => go('detail', { id: el.dataset.id }), 120)
+
+    const finePointer = window.matchMedia('(hover: hover) and (pointer: fine)').matches
+    root().querySelectorAll('.pile').forEach((pile) => {
+      const cards = () => [...pile.querySelectorAll('.pile-card')]
+      const clearLift = () => cards().forEach((c) => c.classList.remove('is-lifted'))
+      const liftNearest = () => {
+        if (finePointer) return
+        const list = cards()
+        if (!list.length) return
+        const mid = pile.getBoundingClientRect().left + pile.clientWidth / 2
+        let best = list[0]
+        let bestDist = Infinity
+        list.forEach((card) => {
+          const r = card.getBoundingClientRect()
+          const dist = Math.abs(r.left + r.width / 2 - mid)
+          if (dist < bestDist) {
+            bestDist = dist
+            best = card
+          }
+        })
+        list.forEach((c) => c.classList.toggle('is-lifted', c === best))
       }
+      let scrollTick = 0
+      pile.addEventListener(
+        'scroll',
+        () => {
+          if (finePointer) return
+          cancelAnimationFrame(scrollTick)
+          scrollTick = requestAnimationFrame(liftNearest)
+        },
+        { passive: true }
+      )
+      liftNearest()
+
+      cards().forEach((el) => {
+        el.addEventListener('pointerdown', (e) => {
+          if (e.pointerType === 'mouse' && finePointer) return
+          clearLift()
+          el.classList.add('is-lifted')
+          el.classList.add('is-pressing')
+        })
+        el.addEventListener('pointerup', () => el.classList.remove('is-pressing'))
+        el.addEventListener('pointercancel', () => el.classList.remove('is-pressing'))
+        el.onclick = () => {
+          el.classList.add('is-pressing')
+          pressThen(el, () => go('detail', { id: el.dataset.id }), 90)
+        }
+      })
     })
   }
 
@@ -622,22 +732,26 @@
         </div>
       </div>`
 
-    document.getElementById('back').onclick = () => go('home')
+    document.getElementById('back').onclick = () => pressThen(document.getElementById('back'), () => go('home'))
     document.getElementById('edit').onclick = () => {
-      editState = S.ensureCardDims(JSON.parse(JSON.stringify(card)))
-      go('edit')
+      pressThen(document.getElementById('edit'), () => {
+        editState = S.ensureCardDims(JSON.parse(JSON.stringify(card)))
+        go('edit')
+      })
     }
     document.getElementById('del').onclick = () => {
-      openAppModal({
-        title: '丢掉这张饭卡？',
-        body: '丢掉后就不能再找回来了。',
-        confirmText: '丢掉',
-        cancelText: '再想想',
-        confirmPrimary: false,
-        onConfirm: () => {
-          S.deleteCard(card.id)
-          go('home')
-        },
+      pressThen(document.getElementById('del'), () => {
+        openAppModal({
+          title: '丢掉这张饭卡？',
+          body: '丢掉后就不能再找回来了。',
+          confirmText: '丢掉',
+          cancelText: '再想想',
+          confirmPrimary: false,
+          onConfirm: () => {
+            S.deleteCard(card.id)
+            go('home')
+          },
+        })
       })
     }
     const iconCover = document.getElementById('iconCover')
@@ -905,69 +1019,76 @@
       go(isNew ? 'home' : 'detail', { id: c.id })
     }
     document.getElementById('close').onclick = () => {
-      sync()
-      if (editSnapshot(c) === c._editSnapshot) {
-        leaveEdit()
-        return
-      }
-      openAppModal({
-        title: isNew ? '这顿还没记下' : '改动还没保存',
-        body: isNew ? '现在离开，刚填的会丢掉。' : '现在离开，这次修改会丢掉。',
-        confirmText: '离开',
-        cancelText: isNew ? '继续写' : '继续改',
-        confirmPrimary: false,
-        onConfirm: leaveEdit,
+      pressThen(document.getElementById('close'), () => {
+        sync()
+        if (editSnapshot(c) === c._editSnapshot) {
+          leaveEdit()
+          return
+        }
+        openAppModal({
+          title: isNew ? '这顿还没记下' : '改动还没保存',
+          body: isNew ? '现在离开，刚填的会丢掉。' : '现在离开，这次修改会丢掉。',
+          confirmText: '离开',
+          cancelText: isNew ? '继续写' : '继续改',
+          confirmPrimary: false,
+          onConfirm: leaveEdit,
+        })
       })
     }
     const saveBtn = document.getElementById('save')
     if (saveBtn) {
       saveBtn.onclick = () => {
-        sync()
-        if (!c.name.trim()) return alert('先写个店名吧')
-        if (!c.date) {
-          const d = new Date()
-          c.date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-        }
-        c.dishes = (c.dishes || [])
-          .map((d) => ({ name: (d.name || '').trim(), rating: dishRating(d) }))
-          .filter((d) => d.name)
-        delete c._shownDims
-        delete c._dishMark
-        delete c._arrangeMode
-        delete c._editSnapshot
-        delete c._arrangeSnapshot
-        S.upsertCard(c)
-        editState = null
-        go('detail', { id: c.id })
+        pressThen(saveBtn, () => {
+          sync()
+          if (!c.name.trim()) return alert('先写个店名吧')
+          if (!c.date) {
+            const d = new Date()
+            c.date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+          }
+          c.dishes = (c.dishes || [])
+            .map((d) => ({ name: (d.name || '').trim(), rating: dishRating(d) }))
+            .filter((d) => d.name)
+          delete c._shownDims
+          delete c._dishMark
+          delete c._arrangeMode
+          delete c._editSnapshot
+          delete c._arrangeSnapshot
+          S.upsertCard(c)
+          editState = null
+          go('detail', { id: c.id })
+        })
       }
     }
     document.getElementById('arrangeBtn').onclick = () => {
-      sync()
-      if (!c._arrangeMode) {
-        c._arrangeMode = true
-        c._arrangeSnapshot = arrangeSnapshot(c)
-        refresh()
-        return
-      }
-      const changed = arrangeSnapshot(c) !== c._arrangeSnapshot
-      const finishArrange = (asDefault) => {
-        if (asDefault) S.saveDefaultLayout(c.fieldOrder, c.dimOrder)
-        c._arrangeMode = false
-        delete c._arrangeSnapshot
-        refresh()
-      }
-      if (!changed) {
-        finishArrange(false)
-        return
-      }
-      openAppModal({
-        title: '编排完成',
-        body: '这套字段写法可以留给以后的新饭卡。',
-        checkLabel: '以后新建饭卡也用这套',
-        confirmText: '收好',
-        cancelText: '',
-        onConfirm: (checked) => finishArrange(!!checked),
-        onCancel: () => {},
+      const arrangeBtn = document.getElementById('arrangeBtn')
+      pressThen(arrangeBtn, () => {
+        sync()
+        if (!c._arrangeMode) {
+          c._arrangeMode = true
+          c._arrangeSnapshot = arrangeSnapshot(c)
+          refresh()
+          return
+        }
+        const changed = arrangeSnapshot(c) !== c._arrangeSnapshot
+        const finishArrange = (asDefault) => {
+          if (asDefault) S.saveDefaultLayout(c.fieldOrder, c.dimOrder)
+          c._arrangeMode = false
+          delete c._arrangeSnapshot
+          refresh()
+        }
+        if (!changed) {
+          finishArrange(false)
+          return
+        }
+        openAppModal({
+          title: '编排完成',
+          body: '这套字段写法可以留给以后的新饭卡。',
+          checkLabel: '以后新建饭卡也用这套',
+          confirmText: '收好',
+          cancelText: '',
+          onConfirm: (checked) => finishArrange(!!checked),
+          onCancel: () => {},
+        })
       })
     }
 
@@ -1074,18 +1195,20 @@
     const iconPickBtn = document.getElementById('iconPickBtn')
     if (iconPickBtn) {
       iconPickBtn.onclick = () => {
-        openDotownPicker({
-          selected: c.pixelIcon || '',
-          cuisines: c.cuisines || [],
-          onSelect: (file) => {
-            c.pixelIcon = file
-            paintIconPick()
-          },
+        pressThen(iconPickBtn, () => {
+          openDotownPicker({
+            selected: c.pixelIcon || '',
+            cuisines: c.cuisines || [],
+            onSelect: (file) => {
+              c.pixelIcon = file
+              paintIconPick()
+            },
+          })
         })
       }
     }
     const tagAdd = document.getElementById('tagAdd')
-    if (tagAdd) tagAdd.onclick = () => addTag(document.getElementById('tagInput').value)
+    if (tagAdd) tagAdd.onclick = () => pressThen(tagAdd, () => addTag(document.getElementById('tagInput').value))
     const tagInput = document.getElementById('tagInput')
     if (tagInput) {
       tagInput.onkeydown = (e) => {
@@ -1169,32 +1292,34 @@
     if (dishAdd) {
       dishAdd.onclick = (e) => {
         e.preventDefault()
-        sync()
-        c.dishes = c.dishes || []
-        c.dishes.push({ name: '', rating: 5 })
-        const i = c.dishes.length - 1
-        const list = document.getElementById('dishList')
-        const row = document.createElement('div')
-        row.className = 'dish-edit-row'
-        row.dataset.dishRow = String(i)
-        row.innerHTML = `
+        pressThen(dishAdd, () => {
+          sync()
+          c.dishes = c.dishes || []
+          c.dishes.push({ name: '', rating: 5 })
+          const i = c.dishes.length - 1
+          const list = document.getElementById('dishList')
+          const row = document.createElement('div')
+          row.className = 'dish-edit-row'
+          row.dataset.dishRow = String(i)
+          row.innerHTML = `
           <input class="pinput" data-dish-name="${i}" value="" placeholder="菜名…">
           <span data-dish-stars="${i}">${starsHtml(5, { size: 16 })}</span>
           <span class="dish-rm" data-rm-dish="${i}">✕</span>`
-        list.appendChild(row)
-        row.querySelector('[data-dish-name]').oninput = (ev) => {
-          const idx = Number(ev.target.dataset.dishName)
-          if (c.dishes[idx]) c.dishes[idx].name = ev.target.value
-        }
-        row.querySelector('[data-rm-dish]').onclick = () => {
-          sync()
-          const idx = Number(row.dataset.dishRow)
-          c.dishes.splice(idx, 1)
-          row.remove()
-          reindexDishes()
-        }
-        bindDishStars(row)
-        row.querySelector('input').focus()
+          list.appendChild(row)
+          row.querySelector('[data-dish-name]').oninput = (ev) => {
+            const idx = Number(ev.target.dataset.dishName)
+            if (c.dishes[idx]) c.dishes[idx].name = ev.target.value
+          }
+          row.querySelector('[data-rm-dish]').onclick = () => {
+            sync()
+            const idx = Number(row.dataset.dishRow)
+            c.dishes.splice(idx, 1)
+            row.remove()
+            reindexDishes()
+          }
+          bindDishStars(row)
+          row.querySelector('input').focus()
+        })
       }
     }
     root().querySelectorAll('[data-rm-dish]').forEach((el) => {
@@ -1671,7 +1796,10 @@
         }
       }
 
-      document.getElementById('addDimBtn').onclick = () => openDimPicker()
+      document.getElementById('addDimBtn').onclick = () => {
+        const btn = document.getElementById('addDimBtn')
+        pressThen(btn, () => openDimPicker())
+      }
     }
   }
 
@@ -1922,6 +2050,7 @@
   }
 
   document.addEventListener('DOMContentLoaded', () => {
+    installGlobalPress()
     S.load()
     tick()
     setInterval(tick, 30000)
