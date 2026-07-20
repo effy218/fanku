@@ -32,31 +32,70 @@
     return err.message || '定位失败，请稍后再试'
   }
 
-  function formatGeoLabel(data, lat, lon) {
+  function cleanPlacePart(s) {
+    return String(s || '')
+      .trim()
+      .replace(/\s+/g, '')
+      .replace(/^(中国|中华人民共和国)/, '')
+  }
+
+  function shortenAreaName(s) {
+    return cleanPlacePart(s).replace(/(街道|地区|社区)$/, '')
+  }
+
+  function joinPlaceParts(parts) {
+    const uniq = []
+    for (const raw of parts) {
+      const p = cleanPlacePart(raw)
+      if (!p) continue
+      if (uniq.some((u) => u === p || u.includes(p) || p.includes(u))) continue
+      uniq.push(p)
+    }
+    return uniq.slice(0, 3).join('·')
+  }
+
+  function formatNominatimLabel(data) {
+    const a = data?.address || {}
+    const district =
+      a.city_district || a.district || a.county || a.city || a.town || a.village || ''
+    const suburb = shortenAreaName(a.suburb || a.neighbourhood || a.quarter || a.city_block || '')
+    const road = cleanPlacePart(a.road || a.pedestrian || a.footway || a.path || a.cycleway || '')
+    const house = cleanPlacePart(a.house_number || '')
+    const roadPart = road ? (house ? `${road}${/号$/.test(house) ? house : `${house}号`}` : road) : ''
+    const poiName = cleanPlacePart(data?.name || '')
+    const usePoi =
+      poiName &&
+      poiName !== road &&
+      !['road', 'suburb', 'neighbourhood', 'city', 'town', 'village', 'state', 'country'].includes(
+        data?.addresstype
+      )
+    return joinPlaceParts([district, suburb, usePoi ? poiName : roadPart || suburb])
+  }
+
+  function formatPhotonLabel(data) {
+    const p = data?.features?.[0]?.properties || {}
+    const district = p.district || p.city || p.county || ''
+    const suburb = shortenAreaName(p.locality || p.neighbourhood || '')
+    const road = cleanPlacePart(p.street || (p.type === 'street' ? p.name : '') || '')
+    const house = cleanPlacePart(p.housenumber || '')
+    const roadPart = road ? (house ? `${road}${/号$/.test(house) ? house : `${house}号`}` : road) : ''
+    const poi = p.type && p.type !== 'street' && p.type !== 'district' && p.type !== 'city' ? cleanPlacePart(p.name) : ''
+    return joinPlaceParts([district, suburb, poi || roadPart])
+  }
+
+  function formatBigDataLabel(data, lat, lon) {
     const admins = (data?.localityInfo?.administrative || [])
       .filter((a) => a?.name && typeof a.adminLevel === 'number')
       .sort((a, b) => a.adminLevel - b.adminLevel)
-      .map((a) => String(a.name).trim())
+      .map((a) => cleanPlacePart(a.name))
       .filter((n) => n && n !== '中国' && n !== '中华人民共和国')
-    const city = (data?.city || '').trim()
-    const locality = (data?.locality || '').trim()
-    const pick = []
+    const city = cleanPlacePart(data?.city || '')
+    const locality = cleanPlacePart(data?.locality || '')
     const district = admins.find((n) => /[区县市]$/.test(n) && n !== city) || admins[admins.length - 2] || ''
     const area = locality || admins[admins.length - 1] || ''
-    if (district && area && district !== area) {
-      pick.push(district, area)
-    } else if (city && area && city !== area) {
-      pick.push(city, area)
-    } else if (district) {
-      pick.push(district)
-    } else if (area) {
-      pick.push(area)
-    } else if (city) {
-      pick.push(city)
-    }
-    const uniq = [...new Set(pick.filter(Boolean))]
-    if (uniq.length) return uniq.slice(0, 2).join('·')
-    if (Number.isFinite(lat) && Number.isFinite(lon)) return `${lat.toFixed(4)}, ${lon.toFixed(4)}`
+    const label = joinPlaceParts([district || city, area])
+    if (label) return label
+    if (Number.isFinite(lat) && Number.isFinite(lon)) return `${lat.toFixed(5)}, ${lon.toFixed(5)}`
     return ''
   }
 
@@ -73,16 +112,62 @@
       navigator.geolocation.getCurrentPosition(resolve, reject, {
         enableHighAccuracy: true,
         timeout: 15000,
-        maximumAge: 60000,
+        maximumAge: 0,
       })
     })
   }
 
-  async function reverseGeocode(lat, lon) {
-    const url = `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${encodeURIComponent(lat)}&longitude=${encodeURIComponent(lon)}&localityLanguage=zh`
-    const res = await fetch(url)
-    if (!res.ok) throw new Error('地址解析失败')
-    return res.json()
+  async function fetchJson(url, opts = {}, timeoutMs = 10000) {
+    const ctrl = new AbortController()
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs)
+    try {
+      const res = await fetch(url, { ...opts, signal: ctrl.signal })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      return await res.json()
+    } finally {
+      clearTimeout(timer)
+    }
+  }
+
+  async function resolveLocationLabel(lat, lon) {
+    // 优先 Nominatim：国内常能解析到路名/街道
+    try {
+      const data = await fetchJson(
+        `https://nominatim.openstreetmap.org/reverse?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&format=json&addressdetails=1&accept-language=zh-CN&zoom=18`,
+        {
+          headers: {
+            Accept: 'application/json',
+          },
+        },
+        12000
+      )
+      const label = formatNominatimLabel(data)
+      if (label) return label
+    } catch (_) {}
+
+    // Photon：街道级备用
+    try {
+      const data = await fetchJson(
+        `https://photon.komoot.io/reverse?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}`,
+        {},
+        10000
+      )
+      const label = formatPhotonLabel(data)
+      if (label) return label
+    } catch (_) {}
+
+    // BigDataCloud：区级兜底
+    try {
+      const data = await fetchJson(
+        `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${encodeURIComponent(lat)}&longitude=${encodeURIComponent(lon)}&localityLanguage=zh`,
+        {},
+        10000
+      )
+      const label = formatBigDataLabel(data, lat, lon)
+      if (label) return label
+    } catch (_) {}
+
+    return `${lat.toFixed(5)}, ${lon.toFixed(5)}`
   }
 
   async function fillLocationFromGps(inputEl, btnEl) {
@@ -96,13 +181,7 @@
       const pos = await getDevicePosition()
       const lat = pos.coords.latitude
       const lon = pos.coords.longitude
-      let label = ''
-      try {
-        const data = await reverseGeocode(lat, lon)
-        label = formatGeoLabel(data, lat, lon)
-      } catch (_) {
-        label = `${lat.toFixed(4)}, ${lon.toFixed(4)}`
-      }
+      const label = await resolveLocationLabel(lat, lon)
       if (label) {
         inputEl.value = label
         inputEl.dispatchEvent(new Event('input', { bubbles: true }))
