@@ -1,12 +1,12 @@
-# Fanku H5
+# Mealdeck H5
 
-Cream-pixel personal food journal. Data lives in the browser via `localStorage`.
+Cream-pixel personal food journal (**Mealdeck** / 饭库). Data lives in the browser via `localStorage`.
 
 **Live:** https://effy218.github.io/fanku/
 
 ## Purpose
 
-Use Fanku when you want a simple place to remember meals:
+Use Mealdeck when you want a simple place to remember meals:
 
 - Which spots were worth going back to
 - Which ones to skip
