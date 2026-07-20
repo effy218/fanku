@@ -88,8 +88,9 @@ img { max-width: 100%; display: block; }
 }
 .view::-webkit-scrollbar { display: none; }
 
-/* 通用按压位移 */
+/* 通用按压位移 · 全站可点控件 */
 .press,
+button,
 .btn,
 .toggle-opt,
 .chip,
@@ -105,11 +106,33 @@ img { max-width: 100%; display: block; }
 .detail-edit,
 .search-top .back,
 .dish-rm,
-.en-tag {
+.en-tag,
+.icon-pick-btn,
+.backup-row,
+.dish-add-btn,
+.sheet-close,
+.chip-x,
+.cuisine-chip,
+.result-card,
+.danger-row,
+.field-drag-handle,
+.dim-picker-row,
+.type-pick,
+.icon-pick-cell,
+.icon-auto-row,
+.dim-move,
+.dim-rm,
+.ht-logo {
   transition: transform 0.08s ease, box-shadow 0.08s ease;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 .press:active,
+.press.is-pressing,
+button:active,
+button.is-pressing,
 .btn:active,
+.btn.is-pressing,
 .toggle-opt:active,
 .chip:active,
 .level-opt:active,
@@ -124,8 +147,24 @@ img { max-width: 100%; display: block; }
 .detail-edit:active,
 .search-top .back:active,
 .dish-rm:active,
-.en-tag:active {
-  transform: translate(2px, 2px);
+.en-tag:active,
+.icon-pick-btn:active,
+.backup-row:active,
+.dish-add-btn:active,
+.sheet-close:active,
+.chip-x:active,
+.cuisine-chip:active,
+.result-card:active,
+.danger-row:active,
+.field-drag-handle:active,
+.dim-picker-row:active,
+.type-pick:active,
+.icon-pick-cell:active,
+.icon-auto-row:active,
+.dim-move:active,
+.dim-rm:active,
+.ht-logo:active {
+  transform: translate(2px, 2px) !important;
   box-shadow: 0 0 0 var(--ink) !important;
 }
 
@@ -144,11 +183,18 @@ img { max-width: 100%; display: block; }
   align-items: center;
   gap: 8px;
 }
-.btn:hover:not(:active) { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 var(--ink); }
+.btn:hover:not(:active):not(.is-pressing) {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 var(--ink);
+}
 .btn-primary { background: var(--brand); color: #fff; }
-.btn-ghost { background: transparent; box-shadow: none; border-color: var(--ink-muted); }
-.btn-ghost:active { box-shadow: none !important; }
+.btn-ghost {
+  background: var(--paper);
+  box-shadow: 2px 2px 0 var(--ink);
+  border-color: var(--ink);
+}
 .btn-sm { font-size: 12px; padding: 7px 14px; box-shadow: 2px 2px 0 var(--ink); }
+.btn-ghost.btn-sm { box-shadow: 2px 2px 0 var(--ink); }
 
 .lv-badge {
   font-family: var(--pix-cn);
@@ -269,8 +315,8 @@ img { max-width: 100%; display: block; }
   font-family: var(--pix-cn);
 }
 .chip-tag .chip-x:active {
-  transform: translate(1px, 1px);
-  box-shadow: 0 0 0 var(--ink);
+  transform: translate(1px, 1px) !important;
+  box-shadow: 0 0 0 var(--ink) !important;
 }
 
 .more-toggle {
@@ -327,17 +373,34 @@ img { max-width: 100%; display: block; }
   box-shadow: 3px 3px 0 var(--ink);
   overflow: hidden;
   position: relative;
-  transition: transform 0.2s, margin 0.2s, box-shadow 0.2s;
+  transition: transform 0.2s ease, margin 0.2s ease, box-shadow 0.2s ease;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 .pile-card:nth-child(odd) { transform: rotate(-1.5deg); }
 .pile-card:nth-child(even) { transform: rotate(1deg); }
-.pile-card:hover {
-  transform: rotate(0) translateY(-4px);
+/* 桌面悬停 / 手机抬起：当前卡滑出 */
+@media (hover: hover) and (pointer: fine) {
+  .pile-card:hover {
+    transform: rotate(0) translateY(-4px);
+    margin-right: 8px;
+    z-index: 5;
+    box-shadow: 4px 4px 0 var(--ink);
+  }
+}
+.pile-card.is-lifted {
+  transform: rotate(0) translateY(-4px) !important;
   margin-right: 8px;
   z-index: 5;
+  box-shadow: 4px 4px 0 var(--ink);
+}
+.pile-card.is-lifted:active,
+.pile-card.is-pressing {
+  transform: rotate(0) translate(1px, -1px) !important;
+  box-shadow: 2px 2px 0 var(--ink) !important;
 }
 .pile-card:last-child { margin-right: 14px; }
+.pile-card:last-child.is-lifted { margin-right: 14px; }
 .pile-card .pc-photo { height: 96px; background: var(--cream-300); position: relative; }
 .pile-card .pc-photo img { width: 100%; height: 100%; object-fit: cover; }
 .pile-card .pc-photo .pc-dotown {
@@ -690,8 +753,8 @@ img { max-width: 100%; display: block; }
   color: var(--ink);
 }
 .icon-pick-btn:active {
-  transform: translate(1px, 1px);
-  box-shadow: 0 0 0 var(--ink);
+  transform: translate(2px, 2px) !important;
+  box-shadow: 0 0 0 var(--ink) !important;
 }
 .icon-pick-preview {
   width: 40px;
@@ -909,7 +972,6 @@ img { max-width: 100%; display: block; }
   box-shadow: 2px 2px 0 var(--ink);
   border-color: var(--ink);
 }
-.eh-right .btn-ghost:active { box-shadow: 0 0 0 var(--ink) !important; }
 
 .core-fields.core-dimmed {
   opacity: 0.42;
