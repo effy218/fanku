@@ -406,7 +406,7 @@
 
     const onDown = (e) => {
       const el = e.target.closest(sel)
-      if (!el) return
+      if (!el || el.closest('.is-readonly') || el.closest('.pile-card')) return
       armPress(el)
     }
     const onUp = () => {
@@ -685,6 +685,31 @@
     })
   }
 
+  function detailDimValueHtml(def, value) {
+    if (def.type === 'stars') {
+      return starsHtml(value, { size: 15, readonly: true, showValue: true })
+    }
+    if (def.type === 'binary') {
+      const opts = def.options || ['是', '否']
+      const on0 = value === true || value === 1
+      return `<div class="toggle-row is-readonly" aria-readonly="true">
+        <div class="toggle-opt ${on0 ? 'on' : ''}">${escapeHtml(opts[0])}</div>
+        <div class="toggle-opt ${!on0 ? 'on' : ''}">${escapeHtml(opts[1])}</div>
+      </div>`
+    }
+    if (def.type === 'ternary') {
+      const opts = def.options || ['好', '中', '差']
+      const idx = Number(value)
+      return `<div class="toggle-row is-readonly" aria-readonly="true">
+        ${opts
+          .map((o, i) => `<div class="toggle-opt ${idx === i ? 'on' : ''}">${escapeHtml(o)}</div>`)
+          .join('')}
+      </div>`
+    }
+    const text = S.formatDim(def, value)
+    return text ? `<span class="detail-capsule">${escapeHtml(text)}</span>` : ''
+  }
+
   function viewDetail() {
     const card = S.ensureCardDims(S.getCard(route.params.id))
     if (!card) return go('home')
@@ -722,16 +747,21 @@
           .join('')}</div>`
       : ''
 
-    const dimsHtml = defs
-      .map(
-        (d) => `<div class="detail-section"><div class="ds-title">${escapeHtml(S.dimLabel(card, d))}</div>
-         <div class="info-val">${
-           d.type === 'stars'
-             ? starsHtml(card.dims[d.id], { size: 15, readonly: true, showValue: true })
-             : escapeHtml(S.formatDim(d, card.dims[d.id]))
-         }</div></div>`
-      )
-      .join('')
+    const dimsHtml = defs.length
+      ? `<div class="detail-section">
+          <div class="ds-title">评价</div>
+          <div class="detail-dims">
+            ${defs
+              .map(
+                (d) => `<div class="dim-read-row">
+                  <span class="info-label">${escapeHtml(S.dimLabel(card, d))}</span>
+                  <div class="dim-read-val">${detailDimValueHtml(d, card.dims[d.id])}</div>
+                </div>`
+              )
+              .join('')}
+          </div>
+        </div>`
+      : ''
 
     root().innerHTML = `
       <div class="view">
@@ -740,7 +770,9 @@
           <div class="detail-right">${badge(card.level)}<span class="detail-edit" id="edit">编辑</span></div>
         </div>
         <div class="detail-body">
-          <div class="detail-name">${escapeHtml(card.name)}</div>
+          <div class="detail-hero lv-tint-${escapeHtml(card.level || 'normal')}">
+            <div class="detail-name">${escapeHtml(card.name)}</div>
+          </div>
           <div class="detail-info">
             ${card.location ? `<div class="info-row"><span class="info-label">位置</span><span class="info-val">${escapeHtml(card.location)}</span></div>` : ''}
             <div class="info-row"><span class="info-label">日期</span><span class="info-val mono">${S.fmtDate(card.date)}</span></div>
