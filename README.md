@@ -1,44 +1,49 @@
-# 饭库 H5
+# Fanku H5
 
-私人美食数据库 · 奶油像素风。样式与交互直接沿用设计系统 V3，数据存在浏览器 `localStorage`。
+Cream-pixel personal food journal. Data lives in the browser via `localStorage`.
 
-## 怎么打开
+**Live:** https://effy218.github.io/fanku/
 
-**方式一（推荐）**：用本地静态服务器，避免部分浏览器限制本地文件读取
+## Purpose
+
+Use Fanku when you want a simple place to remember meals:
+
+- Which spots were worth going back to
+- Which ones to skip
+- What you ordered and how it tasted
+
+Cards are sorted into four piles by recommendation level so your favorites and avoid-list stay visible.
+
+## Features
+
+- Home piles: Must-try / Recommend / Okay / Avoid
+- Search by place, dishes, or notes
+- Meal card: location, date, cuisine tags, taste stars, level, re-eat intent, photos, journal, dishes
+- Arrange mode: reorder / add / remove fields; optionally save as default for new cards
+- Pixel cuisine icons (auto by tag, or pick manually)
+- Backup: tap the logo → export or restore a JSON file
+
+## Open locally
 
 ```bash
 cd h5
 npx --yes serve .
 ```
 
-然后浏览器打开提示的地址（一般是 `http://localhost:3000`）。
+Or open `index.html` directly (a local static server is more reliable).
 
-**方式二**：直接双击打开 [`index.html`](index.html)（多数浏览器可用）。
-
-手机访问：同一 Wi‑Fi 下用电脑 IP + 端口打开即可。
-
-## 功能
-
-- 主页四堆卡堆横滑（强推 / 推荐 / 一般 / 避雷）
-- 折叠搜索、新建/编辑饭卡、详情
-- 固定字段：店名、位置、日期、菜系标签、口味星级、等级、照片、复吃、手账、菜品
-- 自定义维度（编辑页编排时可添加）
-- **数据备份**：点左上角「饭库」Logo → 导出 / 从备份恢复（JSON）
-
-## 目录
+## Files
 
 ```
-h5/
-  index.html      # 入口
-  css/fanku.css   # 设计系统样式（挪用 V3）
-  js/storage.js   # localStorage
-  js/app.js       # 页面与交互
-  assets/dotown/  # 像素图标
+index.html
+css/fanku.css
+js/storage.js      # localStorage
+js/app.js          # UI & routing
+assets/dotown/     # pixel icons
 ```
 
-## 说明
+## Data
 
-- 数据键名：`fanku:v1`（清站点数据会重置为示例饭卡）
-- 照片以 Data URL 存在本地，数量多时注意浏览器存储配额
-- 换机或清缓存前请先导出备份；导入会整份覆盖本机数据
-- 在线地址：https://effy218.github.io/fanku/
+- Storage key: `fanku:v1`
+- Export before clearing cache or changing devices
+- Import overwrites all data on this device
