@@ -20,12 +20,25 @@ window.FankuStore = (() => {
     `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`
 
   const defaultDefs = () => [
-    { id: 'dim_service', name: '服务', type: 'stars', enabled: true, order: 0 },
-    { id: 'dim_queue', name: '排队', type: 'ternary', options: ['很快', '一般', '很长'], enabled: true, order: 1 },
-    { id: 'dim_calorie', name: '热量', type: 'text', enabled: true, order: 2 },
-    { id: 'dim_health', name: '健康度', type: 'stars', enabled: true, order: 3 },
-    { id: 'dim_photo_worthy', name: '是否出片', type: 'binary', options: ['出片', '不出片'], enabled: true, order: 4 },
+    { id: 'dim_service', name: '服务', type: 'stars', attach: 'card', enabled: true, order: 0 },
+    { id: 'dim_environment', name: '环境', type: 'stars', attach: 'card', enabled: true, order: 1 },
+    { id: 'dim_value', name: '性价比', type: 'stars', attach: 'card', enabled: true, order: 2 },
+    { id: 'dim_queue', name: '排队', type: 'choice', options: ['很快', '一般', '很长'], attach: 'card', enabled: true, order: 3 },
+    { id: 'dim_wait_min', name: '等待时间', type: 'number', unit: '分钟', attach: 'card', enabled: true, order: 4 },
+    { id: 'dim_avg_price', name: '人均', type: 'number', unit: '元', attach: 'card', enabled: true, order: 5 },
+    { id: 'dim_photo_worthy', name: '是否出片', type: 'binary', options: ['出片', '不出片'], attach: 'card', enabled: true, order: 6 },
   ]
+
+  const PRESET_DIM_IDS = [
+    'dim_service',
+    'dim_environment',
+    'dim_value',
+    'dim_queue',
+    'dim_wait_min',
+    'dim_avg_price',
+    'dim_photo_worthy',
+  ]
+  const REMOVED_PRESET_DIM_IDS = ['dim_calorie', 'dim_health']
 
   const seedCards = () => {
     const now = Date.now()
@@ -33,46 +46,58 @@ window.FankuStore = (() => {
       {
         id: 'card_seed_1', name: '小津拉面', location: '朝阳区·三里屯', date: '2026-07-06',
         cuisines: ['日料', '面食'], taste: 5, level: 'strong', photos: [], reeat: 'yes',
-        dims: { dim_service: 4.5, dim_queue: 1, dim_calorie: '约 850 kcal', dim_health: 3, dim_photo_worthy: true },
+        dims: {
+          dim_service: 4.5,
+          dim_environment: 4,
+          dim_value: 4,
+          dim_queue: 1,
+          dim_wait_min: 15,
+          dim_avg_price: 78,
+          dim_photo_worthy: true,
+        },
         note: '汤头浓白挂勺，面条偏细硬挺。叉烧入口即化，味玉流心惊喜。下雨天来一碗，治愈。',
         dishes: [
-          { name: '豚骨拉面（替玉）', rating: 5 },
-          { name: '味玉叉烧饭', rating: 4 },
-          { name: '炸鸡块', rating: 1.5 },
+          { name: '豚骨拉面（替玉）', rating: 5, extras: {} },
+          { name: '味玉叉烧饭', rating: 4, extras: {} },
+          { name: '炸鸡块', rating: 1.5, extras: {} },
         ],
         createdAt: now - 86400000 * 3, updatedAt: now - 86400000 * 3,
       },
       {
         id: 'card_seed_2', name: '巷子口咖啡', location: '东城区·南锣鼓巷', date: '2026-07-04',
         cuisines: ['咖啡', '轻食'], taste: 4, level: 'rec', photos: [], reeat: 'maybe',
-        dims: { dim_service: 4, dim_photo_worthy: true },
+        dims: { dim_service: 4, dim_environment: 4.5, dim_avg_price: 42, dim_photo_worthy: true },
         note: '澳白细腻，可颂外酥里软。适合一个人坐一下午。',
         createdAt: now - 86400000 * 5, updatedAt: now - 86400000 * 5,
       },
       {
         id: 'card_seed_3', name: '老王麻辣烫', location: '海淀区·五道口', date: '2026-06-28',
         cuisines: ['川菜', '小吃'], taste: 3.5, level: 'normal', photos: [], reeat: 'maybe',
-        dims: { dim_queue: 2, dim_calorie: '偏高', dim_health: 2 },
+        dims: { dim_queue: 2, dim_wait_min: 25, dim_value: 4, dim_avg_price: 28 },
         createdAt: now - 86400000 * 12, updatedAt: now - 86400000 * 12,
       },
       {
         id: 'card_seed_4', name: '某网红火锅', location: '朝阳区·国贸', date: '2026-06-20',
         cuisines: ['火锅'], taste: 2, level: 'avoid', photos: [], reeat: 'no',
-        dims: { dim_service: 1.5, dim_queue: 2, dim_photo_worthy: false },
+        dims: { dim_service: 1.5, dim_queue: 2, dim_value: 1.5, dim_avg_price: 168, dim_photo_worthy: false },
         note: '汤底寡淡，服务慢，性价比不行。',
         createdAt: now - 86400000 * 20, updatedAt: now - 86400000 * 20,
       },
       {
         id: 'card_seed_5', name: '和食厨房', location: '西城区·西单', date: '2026-07-01',
         cuisines: ['日料'], taste: 4.5, level: 'strong', photos: [], reeat: 'yes',
-        dims: { dim_service: 5, dim_health: 4 },
-        dishes: [{ name: '味噌拉面', rating: 5 }, { name: '叉烧饭', rating: 4 }],
+        dims: { dim_service: 5, dim_environment: 4.5, dim_value: 4 },
+        dishes: [
+          { name: '味噌拉面', rating: 5, extras: {} },
+          { name: '叉烧饭', rating: 4, extras: {} },
+        ],
         createdAt: now - 86400000 * 8, updatedAt: now - 86400000 * 8,
       },
       {
         id: 'card_seed_6', name: '楼下包子铺', location: '朝阳区·望京', date: '2026-07-05',
         cuisines: ['小吃'], taste: 4, level: 'rec', photos: [], reeat: 'yes',
-        dims: {}, createdAt: now - 86400000 * 2, updatedAt: now - 86400000 * 2,
+        dims: { dim_avg_price: 12, dim_wait_min: 5 },
+        createdAt: now - 86400000 * 2, updatedAt: now - 86400000 * 2,
       },
     ]
   }
@@ -105,12 +130,88 @@ window.FankuStore = (() => {
     return [...DEFAULT_CUISINE_TAGS, ...custom]
   }
 
+  function stripDimFromCard(card, id) {
+    if (!card) return card
+    const next = { ...card }
+    if (next.dims && id in next.dims) {
+      const dims = { ...next.dims }
+      delete dims[id]
+      next.dims = dims
+    }
+    if (Array.isArray(next.dimOrder)) next.dimOrder = next.dimOrder.filter((x) => x !== id)
+    if (Array.isArray(next.fieldOrder)) next.fieldOrder = next.fieldOrder.filter((x) => x !== id)
+    if (next.dimAliases && id in next.dimAliases) {
+      const dimAliases = { ...next.dimAliases }
+      delete dimAliases[id]
+      next.dimAliases = dimAliases
+    }
+    return next
+  }
+
+  /** 常用评价预设 v2：补环境/性价比/等待/人均，撤热量/健康度 */
+  function migratePresetDims(data) {
+    if ((data.presetDimsVersion || 0) >= 2) return false
+    const fresh = defaultDefs()
+    const byId = Object.fromEntries((data.dimensionDefs || []).map((d) => [d.id, d]))
+    fresh.forEach((def) => {
+      if (!byId[def.id]) {
+        byId[def.id] = { ...def }
+      } else if (def.id === 'dim_queue') {
+        // 排队升级为 choice，保留原有选项文案
+        byId[def.id] = {
+          ...byId[def.id],
+          type: 'choice',
+          options: byId[def.id].options?.length ? byId[def.id].options : def.options,
+          attach: byId[def.id].attach || 'card',
+        }
+      } else if (PRESET_DIM_IDS.includes(def.id)) {
+        byId[def.id] = {
+          ...byId[def.id],
+          name: byId[def.id].name || def.name,
+          type: def.type,
+          options: def.options || byId[def.id].options,
+          unit: def.unit || byId[def.id].unit,
+          attach: byId[def.id].attach || 'card',
+          enabled: byId[def.id].enabled !== false,
+        }
+      }
+    })
+    REMOVED_PRESET_DIM_IDS.forEach((id) => {
+      delete byId[id]
+    })
+    data.dimensionDefs = Object.values(byId)
+      .sort((a, b) => {
+        const ai = PRESET_DIM_IDS.indexOf(a.id)
+        const bi = PRESET_DIM_IDS.indexOf(b.id)
+        const ao = ai >= 0 ? ai : 100 + (a.order || 0)
+        const bo = bi >= 0 ? bi : 100 + (b.order || 0)
+        return ao - bo
+      })
+      .map((d, i) => ({ ...d, order: i }))
+    data.cards = (data.cards || []).map((c) => {
+      let next = c
+      REMOVED_PRESET_DIM_IDS.forEach((id) => {
+        next = stripDimFromCard(next, id)
+      })
+      return next
+    })
+    if (Array.isArray(data.defaultDimOrder)) {
+      data.defaultDimOrder = data.defaultDimOrder.filter((id) => !REMOVED_PRESET_DIM_IDS.includes(id))
+    }
+    if (Array.isArray(data.defaultFieldOrder)) {
+      data.defaultFieldOrder = data.defaultFieldOrder.filter((id) => !REMOVED_PRESET_DIM_IDS.includes(id))
+    }
+    data.presetDimsVersion = 2
+    return true
+  }
+
   const seed = () => ({
     cards: seedCards(),
     dimensionDefs: defaultDefs(),
     recentSearches: ['火锅', '日料', '面食'],
     cuisineTags: [...DEFAULT_CUISINE_TAGS],
     cuisineTagsVersion: 2,
+    presetDimsVersion: 2,
   })
 
   function load() {
@@ -129,14 +230,21 @@ window.FankuStore = (() => {
             data.cuisineTagsVersion = 2
             changed = true
           }
+          if (migratePresetDims(data)) changed = true
           const out = {
             cards: data.cards || [],
             dimensionDefs: data.dimensionDefs?.length ? data.dimensionDefs : defaultDefs(),
             recentSearches: data.recentSearches || [],
             cuisineTags: data.cuisineTags?.length ? data.cuisineTags : [...DEFAULT_CUISINE_TAGS],
             cuisineTagsVersion: data.cuisineTagsVersion || 2,
+            presetDimsVersion: data.presetDimsVersion || 2,
             defaultFieldOrder: Array.isArray(data.defaultFieldOrder) ? data.defaultFieldOrder : null,
             defaultDimOrder: Array.isArray(data.defaultDimOrder) ? data.defaultDimOrder : null,
+            defaultDishColOrder: Array.isArray(data.defaultDishColOrder) ? data.defaultDishColOrder : null,
+            defaultListColOrders:
+              data.defaultListColOrders && typeof data.defaultListColOrders === 'object'
+                ? data.defaultListColOrders
+                : null,
           }
           if (changed) save(out)
           return out
@@ -186,22 +294,73 @@ window.FankuStore = (() => {
 
   function upsertDef(def) {
     const data = load()
-    const i = data.dimensionDefs.findIndex((d) => d.id === def.id)
-    if (i >= 0) data.dimensionDefs[i] = def
-    else data.dimensionDefs.push({ ...def, order: data.dimensionDefs.length })
+    let attach = 'card'
+    if (def.type === 'list') attach = 'card'
+    else if (def.attach === 'dishes') attach = 'dishes'
+    else if (def.attach === 'list') attach = 'list'
+    const next = {
+      ...def,
+      attach,
+      listId: attach === 'list' ? def.listId || '' : undefined,
+    }
+    if (next.type === 'list') delete next.listId
+    const i = data.dimensionDefs.findIndex((d) => d.id === next.id)
+    if (i >= 0) data.dimensionDefs[i] = next
+    else data.dimensionDefs.push({ ...next, order: data.dimensionDefs.length })
     data.dimensionDefs = data.dimensionDefs.sort((a, b) => a.order - b.order).map((d, i) => ({ ...d, order: i }))
     save(data)
   }
 
   function deleteDef(id) {
     const data = load()
-    data.dimensionDefs = data.dimensionDefs.filter((d) => d.id !== id).map((d, i) => ({ ...d, order: i }))
+    data.dimensionDefs = data.dimensionDefs
+      .filter((d) => d.id !== id && !(d.attach === 'list' && d.listId === id))
+      .map((d, i) => ({ ...d, order: i }))
     data.cards = data.cards.map((c) => {
-      if (!(id in (c.dims || {}))) return c
-      const dims = { ...c.dims }
+      const dims = { ...(c.dims || {}) }
       delete dims[id]
-      return { ...c, dims }
+      const dishColOrder = (c.dishColOrder || []).filter((x) => x !== id)
+      const dishes = (c.dishes || []).map((d) => {
+        if (!d?.extras || !(id in d.extras)) return d
+        const extras = { ...d.extras }
+        delete extras[id]
+        return { ...d, extras }
+      })
+      const fieldOrder = (c.fieldOrder || []).filter((x) => x !== id)
+      const dimOrder = (c.dimOrder || []).filter((x) => x !== id)
+      const listData = { ...(c.listData || {}) }
+      delete listData[id]
+      Object.keys(listData).forEach((lid) => {
+        const block = listData[lid]
+        if (!block) return
+        listData[lid] = {
+          ...block,
+          colOrder: (block.colOrder || []).filter((x) => x !== id),
+          rows: (block.rows || []).map((r) => {
+            if (!r?.extras || !(id in r.extras)) return r
+            const extras = { ...r.extras }
+            delete extras[id]
+            return { ...r, extras }
+          }),
+        }
+      })
+      return { ...c, dims, dishColOrder, dishes, fieldOrder, dimOrder, listData }
     })
+    if (Array.isArray(data.defaultDishColOrder)) {
+      data.defaultDishColOrder = data.defaultDishColOrder.filter((x) => x !== id)
+    }
+    if (Array.isArray(data.defaultDimOrder)) {
+      data.defaultDimOrder = data.defaultDimOrder.filter((x) => x !== id)
+    }
+    if (Array.isArray(data.defaultFieldOrder)) {
+      data.defaultFieldOrder = data.defaultFieldOrder.filter((x) => x !== id)
+    }
+    if (data.defaultListColOrders && typeof data.defaultListColOrders === 'object') {
+      delete data.defaultListColOrders[id]
+      Object.keys(data.defaultListColOrders).forEach((lid) => {
+        data.defaultListColOrders[lid] = (data.defaultListColOrders[lid] || []).filter((x) => x !== id)
+      })
+    }
     save(data)
   }
 
@@ -222,6 +381,14 @@ window.FankuStore = (() => {
       if ((c.note || '').toLowerCase().includes(key)) return true
       if ((c.cuisines || []).some((t) => t.toLowerCase().includes(key))) return true
       if ((c.dishes || []).some((d) => d.name.toLowerCase().includes(key))) return true
+      const lists = c.listData || {}
+      if (
+        Object.values(lists).some((block) =>
+          (block.rows || []).some((r) => (r.name || '').toLowerCase().includes(key))
+        )
+      ) {
+        return true
+      }
       return Object.values(c.dims || {}).some((v) => typeof v === 'string' && v.toLowerCase().includes(key))
     })
   }
@@ -233,7 +400,8 @@ window.FankuStore = (() => {
     const card = {
       id: uid('card'), name: '', location: '', date, cuisines: [], taste: 5, level: 'rec',
       photos: [], reeat: 'maybe', dims: {}, dimOrder: [], dimAliases: {},
-      fieldOrder: null, note: '', dishes: [{ name: '', rating: 5 }],
+      fieldOrder: null, dishColOrder: null, listData: {}, note: '',
+      dishes: [{ name: '', rating: 5, extras: {} }],
       pixelIcon: '',
       createdAt: Date.now(), updatedAt: Date.now(),
     }
@@ -243,37 +411,92 @@ window.FankuStore = (() => {
     if (Array.isArray(data.defaultFieldOrder) && data.defaultFieldOrder.length) {
       card.fieldOrder = [...data.defaultFieldOrder]
     }
+    if (Array.isArray(data.defaultDishColOrder)) {
+      card.dishColOrder = [...data.defaultDishColOrder]
+    }
     return card
   }
 
-  function saveDefaultLayout(fieldOrder, dimOrder) {
+  function saveDefaultLayout(fieldOrder, dimOrder, dishColOrder, listColOrders) {
     const data = load()
     data.defaultFieldOrder = Array.isArray(fieldOrder) ? [...fieldOrder] : null
     data.defaultDimOrder = Array.isArray(dimOrder) ? [...dimOrder] : null
+    data.defaultDishColOrder = Array.isArray(dishColOrder) ? [...dishColOrder] : null
+    data.defaultListColOrders =
+      listColOrders && typeof listColOrders === 'object' ? { ...listColOrders } : null
     save(data)
   }
 
   const CORE_FIELD_IDS = ['name', 'location', 'date', 'cuisine', 'taste', 'level', 'reeat', 'photos', 'note', 'dishes']
   const LOCKED_FIELDS = ['name', 'taste', 'level', 'reeat']
 
+  function isListBlock(def) {
+    return def && def.type === 'list'
+  }
+
+  function isListCol(def) {
+    return def && (def.attach === 'dishes' || def.attach === 'list')
+  }
+
+  function isDishAttach(def) {
+    return def && def.attach === 'dishes'
+  }
+
+  function isCardAttach(def) {
+    return def && !isListCol(def) && !isListBlock(def)
+  }
+
+  function emptyListRow() {
+    return { name: '', extras: {} }
+  }
+
+  function ensureListBlock(card, listId) {
+    card.listData = card.listData || {}
+    if (!card.listData[listId]) {
+      const data = load()
+      const cols =
+        data.defaultListColOrders && Array.isArray(data.defaultListColOrders[listId])
+          ? [...data.defaultListColOrders[listId]]
+          : []
+      card.listData[listId] = { rows: [emptyListRow()], colOrder: cols }
+    } else {
+      const block = card.listData[listId]
+      if (!Array.isArray(block.colOrder)) block.colOrder = []
+      if (!Array.isArray(block.rows) || block.rows.length === 0) {
+        block.rows = [emptyListRow()]
+      } else {
+        block.rows = block.rows.map((r) => ({
+          ...r,
+          extras: r.extras && typeof r.extras === 'object' ? r.extras : {},
+        }))
+      }
+    }
+    return card.listData[listId]
+  }
+
   /** 规范化本卡维度顺序、字段顺序与别名（兼容旧数据） */
   function ensureCardDims(card) {
     if (!card) return card
     card.dims = card.dims || {}
     card.dimAliases = card.dimAliases || {}
+    card.listData = card.listData || {}
+    const defs = getDefs()
+    const defMap = Object.fromEntries(defs.map((d) => [d.id, d]))
     if (!Array.isArray(card.dimOrder)) {
-      const defs = getDefs().filter((d) => d.enabled)
+      const enabled = defs.filter((d) => d.enabled && isCardAttach(d))
       const fromShown = card._shownDims || []
       const fromVals = Object.keys(card.dims).filter((id) => hasVal(card.dims[id]))
       const ids = new Set([...fromShown, ...fromVals])
       const order = []
-      defs.forEach((d) => {
+      enabled.forEach((d) => {
         if (ids.has(d.id)) order.push(d.id)
       })
       ids.forEach((id) => {
-        if (!order.includes(id)) order.push(id)
+        if (!order.includes(id) && isCardAttach(defMap[id])) order.push(id)
       })
       card.dimOrder = order
+    } else {
+      card.dimOrder = card.dimOrder.filter((id) => isCardAttach(defMap[id]) || !defMap[id])
     }
     if (!Array.isArray(card.fieldOrder)) {
       card.fieldOrder = [...CORE_FIELD_IDS, ...card.dimOrder]
@@ -284,11 +507,78 @@ window.FankuStore = (() => {
       card.dimOrder.forEach((id) => {
         if (!card.fieldOrder.includes(id)) card.fieldOrder.push(id)
       })
+      card.fieldOrder = card.fieldOrder.filter((id) => {
+        if (isCoreField(id)) return true
+        const d = defMap[id]
+        if (!d) return true
+        if (isListBlock(d)) return true
+        return isCardAttach(d)
+      })
+    }
+    // ensure list blocks present in fieldOrder have data
+    card.fieldOrder.forEach((id) => {
+      if (isListBlock(defMap[id])) ensureListBlock(card, id)
+    })
+    Object.keys(card.listData).forEach((lid) => {
+      if (!isListBlock(defMap[lid])) {
+        // keep orphan data but trim invalid cols
+        const block = card.listData[lid]
+        if (block) {
+          block.colOrder = (block.colOrder || []).filter((cid) => {
+            const d = defMap[cid]
+            return d && d.attach === 'list' && d.listId === lid
+          })
+        }
+        return
+      }
+      ensureListBlock(card, lid)
+      const block = card.listData[lid]
+      block.colOrder = (block.colOrder || []).filter((cid) => {
+        const d = defMap[cid]
+        return d && d.attach === 'list' && d.listId === lid
+      })
+    })
+    if (!Array.isArray(card.dishColOrder)) {
+      card.dishColOrder = []
+    } else {
+      card.dishColOrder = card.dishColOrder.filter((id) => {
+        const d = defMap[id]
+        return d && isDishAttach(d)
+      })
     }
     if (!Array.isArray(card.dishes) || card.dishes.length === 0) {
-      card.dishes = [{ name: '', rating: 5 }]
+      card.dishes = [{ name: '', rating: 5, extras: {} }]
+    } else {
+      card.dishes = card.dishes.map((d) => ({
+        ...d,
+        extras: d.extras && typeof d.extras === 'object' ? d.extras : {},
+      }))
     }
     return card
+  }
+
+  function getDishColDefs(card) {
+    const defMap = Object.fromEntries(getDefs().map((d) => [d.id, d]))
+    return (card?.dishColOrder || [])
+      .map((id) => defMap[id])
+      .filter((d) => d && d.enabled && isDishAttach(d))
+  }
+
+  function getListColDefs(card, listId) {
+    if (listId === 'dishes') return getDishColDefs(card)
+    const defMap = Object.fromEntries(getDefs().map((d) => [d.id, d]))
+    const block = card?.listData?.[listId]
+    return (block?.colOrder || [])
+      .map((id) => defMap[id])
+      .filter((d) => d && d.enabled && d.attach === 'list' && d.listId === listId)
+  }
+
+  function collectListColOrders(card) {
+    const out = {}
+    Object.keys(card?.listData || {}).forEach((lid) => {
+      out[lid] = [...(card.listData[lid].colOrder || [])]
+    })
+    return out
   }
 
   function isLockedField(id) {
@@ -339,9 +629,15 @@ window.FankuStore = (() => {
       const opts = def.options || ['是', '否']
       return value === true || value === 1 ? opts[0] : opts[1]
     }
-    if (def.type === 'ternary') {
-      const opts = def.options || ['好', '中', '差']
+    if (def.type === 'ternary' || def.type === 'choice') {
+      const opts = def.options || (def.type === 'choice' ? [] : ['好', '中', '差'])
       return opts[Number(value)] ?? String(value)
+    }
+    if (def.type === 'number') {
+      const n = Number(value)
+      if (Number.isNaN(n)) return String(value)
+      const unit = (def.unit || '').trim()
+      return unit ? `${n}${unit}` : String(n)
     }
     return String(value)
   }
@@ -384,8 +680,11 @@ window.FankuStore = (() => {
         recentSearches: data.recentSearches || [],
         cuisineTags: data.cuisineTags || [],
         cuisineTagsVersion: data.cuisineTagsVersion || 2,
+        presetDimsVersion: data.presetDimsVersion || 2,
         defaultFieldOrder: data.defaultFieldOrder || null,
         defaultDimOrder: data.defaultDimOrder || null,
+        defaultDishColOrder: data.defaultDishColOrder || null,
+        defaultListColOrders: data.defaultListColOrders || null,
       },
     }
   }
@@ -407,14 +706,21 @@ window.FankuStore = (() => {
         recentSearches: payload.recentSearches || [],
         cuisineTags: payload.cuisineTags?.length ? payload.cuisineTags : [...DEFAULT_CUISINE_TAGS],
         cuisineTagsVersion: payload.cuisineTagsVersion || 2,
+        presetDimsVersion: payload.presetDimsVersion || 0,
         defaultFieldOrder: Array.isArray(payload.defaultFieldOrder) ? payload.defaultFieldOrder : null,
         defaultDimOrder: Array.isArray(payload.defaultDimOrder) ? payload.defaultDimOrder : null,
+        defaultDishColOrder: Array.isArray(payload.defaultDishColOrder) ? payload.defaultDishColOrder : null,
+        defaultListColOrders:
+          payload.defaultListColOrders && typeof payload.defaultListColOrders === 'object'
+            ? payload.defaultListColOrders
+            : null,
       }
       if (next.cuisineTagsVersion !== 2) {
         next.cuisineTags = migrateCuisineTags(next.cuisineTags)
         next.cards = next.cards.map((c) => migrateCardCuisines({ ...c }))
         next.cuisineTagsVersion = 2
       }
+      migratePresetDims(next)
       save(next)
       return { ok: true, cardCount: next.cards.length }
     } catch (e) {
@@ -432,6 +738,8 @@ window.FankuStore = (() => {
     formatDim, hasVal, fmtDate, fmtShort, getRecent: () => load().recentSearches,
     getCuisineTags: () => load().cuisineTags, removeCuisineTag, defaultDefs,
     ensureCardDims, dimLabel, renameDim, isLockedField, isCoreField, CORE_FIELD_IDS, LOCKED_FIELDS,
+    isDishAttach, isCardAttach, isListBlock, isListCol, getDishColDefs, getListColDefs,
+    ensureListBlock, emptyListRow, collectListColOrders,
     saveDefaultLayout, exportBackup, importBackup,
   }
 })()
