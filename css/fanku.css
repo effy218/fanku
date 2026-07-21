@@ -435,7 +435,6 @@ button:active,
 .pile-card:last-child.is-lifted { margin-right: 14px; }
 .pile-card .pc-photo { height: 96px; background: var(--cream-300); position: relative; }
 .pile-card .pc-photo.is-icon {
-  background: var(--paper);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -459,6 +458,7 @@ button:active,
   background: var(--cream-300);
 }
 .detail-photo.is-dotown img,
+.detail-photo.is-dotown .dotown-hero,
 .result-card .rp.is-icon img,
 .result-card .rp .rp-dotown {
   background: transparent;
@@ -814,7 +814,6 @@ button:active,
   justify-content: center;
   gap: 6px;
   height: 168px;
-  background: var(--paper);
 }
 .detail-photo.is-dotown .dotown-hero {
   width: 88px;
@@ -1798,7 +1797,6 @@ button:active,
   align-items: center;
   justify-content: center;
 }
-.result-card .rp.is-icon { background: var(--paper); }
 .result-card .rp.rp-lv-strong { background: var(--lv-strong-bg); }
 .result-card .rp.rp-lv-rec { background: var(--lv-rec-bg); }
 .result-card .rp.rp-lv-normal { background: var(--lv-normal-bg); }
