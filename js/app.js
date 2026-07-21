@@ -488,6 +488,141 @@
       .replace(/"/g, '&quot;')
   }
 
+  /* 照片：原图 data URL 过大时手机解码会闪/空白，压缩后用 blob URL 展示 */
+  const PHOTO_MAX_EDGE = 1280
+  const PHOTO_TARGET_CHARS = 520000
+  const photoBlobCache = new Map()
+
+  function photoDisplaySrc(dataUrl) {
+    if (!dataUrl || typeof dataUrl !== 'string') return ''
+    if (!dataUrl.startsWith('data:')) return dataUrl
+    const cached = photoBlobCache.get(dataUrl)
+    if (cached) return cached
+    try {
+      const comma = dataUrl.indexOf(',')
+      if (comma < 0) return dataUrl
+      const header = dataUrl.slice(0, comma)
+      const b64 = dataUrl.slice(comma + 1)
+      const mime = (header.match(/data:([^;,]+)/) || [])[1] || 'image/jpeg'
+      const bin = atob(b64)
+      const bytes = new Uint8Array(bin.length)
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+      const url = URL.createObjectURL(new Blob([bytes], { type: mime }))
+      photoBlobCache.set(dataUrl, url)
+      return url
+    } catch (e) {
+      console.warn(e)
+      return dataUrl
+    }
+  }
+
+  function photoImgHtml(dataUrl, cls = '') {
+    const src = photoDisplaySrc(dataUrl)
+    const clsAttr = cls ? ` class="${cls}"` : ''
+    return `<img${clsAttr} src="${src}" alt="" loading="lazy" decoding="async" draggable="false">`
+  }
+
+  function loadImageFromSrc(src) {
+    return new Promise((resolve, reject) => {
+      const img = new Image()
+      img.onload = () => resolve(img)
+      img.onerror = () => reject(new Error('image decode failed'))
+      img.src = src
+    })
+  }
+
+  async function compressDataUrl(dataUrl) {
+    if (!dataUrl || typeof dataUrl !== 'string' || !dataUrl.startsWith('data:')) return dataUrl
+    const img = await loadImageFromSrc(dataUrl)
+    const maxSide = Math.max(img.width || 1, img.height || 1)
+    let scale = Math.min(1, PHOTO_MAX_EDGE / maxSide)
+    let w = Math.max(1, Math.round((img.width || 1) * scale))
+    let h = Math.max(1, Math.round((img.height || 1) * scale))
+    const canvas = document.createElement('canvas')
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return dataUrl
+
+    const paint = () => {
+      canvas.width = w
+      canvas.height = h
+      ctx.fillStyle = '#ffffff'
+      ctx.fillRect(0, 0, w, h)
+      ctx.drawImage(img, 0, 0, w, h)
+    }
+
+    paint()
+    let quality = 0.76
+    let out = canvas.toDataURL('image/jpeg', quality)
+    while (out.length > PHOTO_TARGET_CHARS && quality > 0.48) {
+      quality -= 0.08
+      out = canvas.toDataURL('image/jpeg', quality)
+    }
+    while (out.length > PHOTO_TARGET_CHARS && Math.max(w, h) > 640) {
+      w = Math.max(1, Math.round(w * 0.82))
+      h = Math.max(1, Math.round(h * 0.82))
+      paint()
+      out = canvas.toDataURL('image/jpeg', Math.max(quality, 0.55))
+    }
+    if (dataUrl.length <= PHOTO_TARGET_CHARS && out.length >= dataUrl.length) return dataUrl
+    return out
+  }
+
+  function readFileAsDataUrl(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(String(reader.result || ''))
+      reader.onerror = () => reject(reader.error || new Error('read failed'))
+      reader.readAsDataURL(file)
+    })
+  }
+
+  async function readAndCompressImageFile(file) {
+    const raw = await readFileAsDataUrl(file)
+    try {
+      return await compressDataUrl(raw)
+    } catch (e) {
+      console.warn(e)
+      if (raw.length <= PHOTO_TARGET_CHARS * 1.2) return raw
+      throw e
+    }
+  }
+
+  async function shrinkOversizedPhotos() {
+    const data = S.load()
+    let changed = false
+    for (const c of data.cards || []) {
+      if (!Array.isArray(c.photos) || !c.photos.length) continue
+      const next = []
+      for (const p of c.photos) {
+        if (typeof p === 'string' && p.startsWith('data:') && p.length > PHOTO_TARGET_CHARS) {
+          try {
+            const shrunk = await compressDataUrl(p)
+            if (shrunk !== p) {
+              const oldBlob = photoBlobCache.get(p)
+              if (oldBlob) {
+                URL.revokeObjectURL(oldBlob)
+                photoBlobCache.delete(p)
+              }
+              changed = true
+            }
+            next.push(shrunk)
+          } catch (e) {
+            console.warn(e)
+            next.push(p)
+          }
+        } else {
+          next.push(p)
+        }
+      }
+      c.photos = next
+    }
+    if (!changed) return
+    S.save(data)
+    await S.flush().catch((e) => console.warn(e))
+    if (route.name === 'home') go('home')
+    else if (route.name === 'detail' && route.params?.id) go('detail', { id: route.params.id })
+  }
+
   const DIM_TYPE_LABEL = {
     text: '文字',
     binary: '二态',
@@ -874,7 +1009,7 @@
             <div class="pc-photo" style="background:${bgs[i % bgs.length]}">
               ${
                 c.photos?.[0]
-                  ? `<img src="${c.photos[0]}" alt="">`
+                  ? photoImgHtml(c.photos[0])
                   : `<img class="pc-dotown" src="${dotownSrc(c)}" alt="">`
               }
               ${badge(c.level, true).replace('lv-badge', 'lv-badge pc-lv')}
@@ -1156,7 +1291,7 @@
       : ''
 
     const photos = (card.photos || []).length
-      ? `<div class="photo-row">${card.photos.map((p) => `<div class="detail-photo"><img src="${p}" alt=""></div>`).join('')}</div>`
+      ? `<div class="photo-row">${card.photos.map((p) => `<div class="detail-photo">${photoImgHtml(p)}</div>`).join('')}</div>`
       : `<div class="detail-photo is-dotown is-pickable lv-cover-${escapeHtml(card.level || 'normal')}" id="iconCover" title="点击更换图标">${dotownImg(card, 'dotown-hero')}<span class="photo-ph">暂无实拍 · 点图标可更换</span></div>`
 
     const dishCols = S.getDishColDefs(card)
@@ -1371,7 +1506,7 @@
     const photos = (c.photos || [])
       .map(
         (p, i) =>
-          `<div class="photo-cell filled" data-rm-photo="${i}"><img src="${p}" alt=""><span class="rm">×</span></div>`
+          `<div class="photo-cell filled" data-rm-photo="${i}">${photoImgHtml(p)}<span class="rm">×</span></div>`
       )
       .join('')
     const photoAdd = (c.photos || []).length < 9 ? `<div class="photo-cell" data-add-photo>＋</div>` : ''
@@ -1905,7 +2040,7 @@
         const filled = (c.photos || [])
           .map(
             (p, i) =>
-              `<div class="photo-cell filled" data-rm-photo="${i}"><img src="${p}" alt=""><span class="rm">×</span></div>`
+              `<div class="photo-cell filled" data-rm-photo="${i}">${photoImgHtml(p)}<span class="rm">×</span></div>`
           )
           .join('')
         const add = (c.photos || []).length < 9 ? `<div class="photo-cell" data-add-photo>＋</div>` : ''
@@ -1913,21 +2048,21 @@
         bindPhotoCells()
       }
       bindPhotoCells()
-      filePick.onchange = () => {
+      filePick.onchange = async () => {
         const files = [...filePick.files].slice(0, 9 - (c.photos?.length || 0))
-        let left = files.length
-        if (!left) return
-        files.forEach((f) => {
-          const reader = new FileReader()
-          reader.onload = () => {
-            c.photos = c.photos || []
-            if (c.photos.length < 9) c.photos.push(reader.result)
-            left -= 1
-            if (left <= 0) paintPhotos()
-          }
-          reader.readAsDataURL(f)
-        })
         filePick.value = ''
+        if (!files.length) return
+        for (const f of files) {
+          try {
+            const url = await readAndCompressImageFile(f)
+            c.photos = c.photos || []
+            if (c.photos.length < 9) c.photos.push(url)
+          } catch (e) {
+            console.warn(e)
+            alert('这张照片读不了，试试换一张或先截图再传')
+          }
+        }
+        paintPhotos()
       }
     }
 
@@ -2802,7 +2937,7 @@
                    else if ((c.note || '').toLowerCase().includes(lower)) hint = `"…${c.note.slice(0, 28)}…"`
                    const showPhoto = c.photos?.[0] || i === 0
                    const thumb = c.photos?.[0]
-                     ? `<img src="${c.photos[0]}" alt="">`
+                     ? photoImgHtml(c.photos[0])
                      : `<img class="rp-dotown" src="${dotownSrc(c)}" alt="">`
                    return `<div class="result-card" data-id="${c.id}">
                      ${showPhoto ? `<div class="rp rp-lv-${escapeHtml(c.level || 'normal')}">${thumb}${badge(c.level, true)}</div>` : ''}
@@ -3048,7 +3183,12 @@
       S.load()
       Promise.resolve(sanitizeAllPixelIcons())
         .catch((e) => console.warn(e))
-        .finally(() => go('splash'))
+        .finally(() => {
+          go('splash')
+          setTimeout(() => {
+            shrinkOversizedPhotos().catch((e) => console.warn(e))
+          }, 1800)
+        })
     }
     if (S.ready) {
       S.ready()
