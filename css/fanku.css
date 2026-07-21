@@ -434,11 +434,34 @@ button:active,
 .pile-card:last-child { margin-right: 14px; }
 .pile-card:last-child.is-lifted { margin-right: 14px; }
 .pile-card .pc-photo { height: 96px; background: var(--cream-300); position: relative; }
+.pile-card .pc-photo.is-icon {
+  background: var(--paper);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 .pile-card .pc-photo img { width: 100%; height: 100%; object-fit: cover; background: var(--cream-300); }
+.pile-card .pc-photo .pc-dotown {
+  position: relative;
+  left: auto;
+  top: auto;
+  transform: none;
+  width: 52px;
+  height: 52px;
+  object-fit: contain;
+  background: transparent;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
 .detail-photo img,
 .photo-cell img,
 .result-card .rp img {
   background: var(--cream-300);
+}
+.detail-photo.is-dotown img,
+.result-card .rp.is-icon img,
+.result-card .rp .rp-dotown {
+  background: transparent;
 }
 .photo-unsupported {
   width: 100%;
@@ -450,17 +473,6 @@ button:active,
   color: var(--ink-muted);
   font-family: var(--pix-cn);
   font-size: 12px;
-}
-.pile-card .pc-photo .pc-dotown {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  width: 52px;
-  height: 52px;
-  object-fit: contain;
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
 }
 .pile-card .pc-lv {
   position: absolute;
@@ -802,6 +814,7 @@ button:active,
   justify-content: center;
   gap: 6px;
   height: 168px;
+  background: var(--paper);
 }
 .detail-photo.is-dotown .dotown-hero {
   width: 88px;
@@ -809,6 +822,7 @@ button:active,
   object-fit: contain;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
+  background: transparent;
 }
 .detail-photo.is-dotown .photo-ph { padding-bottom: 0; }
 .lv-cover-strong { background: var(--lv-strong-bg); }
@@ -1784,6 +1798,7 @@ button:active,
   align-items: center;
   justify-content: center;
 }
+.result-card .rp.is-icon { background: var(--paper); }
 .result-card .rp.rp-lv-strong { background: var(--lv-strong-bg); }
 .result-card .rp.rp-lv-rec { background: var(--lv-rec-bg); }
 .result-card .rp.rp-lv-normal { background: var(--lv-normal-bg); }
@@ -1795,6 +1810,7 @@ button:active,
   object-fit: contain;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
+  background: transparent;
 }
 .result-card .rp .lv-badge {
   position: absolute;
