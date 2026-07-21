@@ -253,99 +253,127 @@
     return `<span class="lv-badge ${m.cls} ${short ? 'sm' : ''}">${short ? m.label : m.short}</span>`
   }
 
-  /* DOTOWN 粗ドット · 菜系符号（本地素材，勿直链） */
+  /* DOTOWN 粗ドット · 标签符号（本地素材，勿直链） */
   const DOTOWN_BASE = './assets/dotown/'
   const DOTOWN_DEFAULT = 'bento.png'
-  const DOTOWN_EMPTY = 'hinomaru.png'
-  const DOTOWN_PACK = [
-    { file: 'bento.png', label: '便当' },
-    { file: 'hinomaru.png', label: '日之丸' },
-    { file: 'rice.png', label: '白饭' },
-    { file: 'onigiri.png', label: '饭团' },
-    { file: 'sushi.png', label: '寿司' },
-    { file: 'norimaki.png', label: '卷寿司' },
-    { file: 'ramen.png', label: '拉面' },
-    { file: 'udon.png', label: '乌冬' },
-    { file: 'soba.png', label: '荞麦面' },
-    { file: 'somen.png', label: '素面' },
-    { file: 'yakisoba.png', label: '炒面' },
-    { file: 'spaghetti.png', label: '意面' },
-    { file: 'dumpling.png', label: '饺子' },
-    { file: 'bao.png', label: '包子' },
-    { file: 'curry.png', label: '咖喱' },
-    { file: 'stew.png', label: '炖菜' },
-    { file: 'miso.png', label: '味增汤' },
-    { file: 'omurice.png', label: '蛋包饭' },
-    { file: 'okonomiyaki.png', label: '大阪烧' },
-    { file: 'takoyaki.png', label: '章鱼烧' },
-    { file: 'croquette.png', label: '可乐饼' },
-    { file: 'shrimp.png', label: '炸虾' },
-    { file: 'chicken.png', label: '炸鸡' },
-    { file: 'steak.png', label: '汉堡排' },
-    { file: 'hamburger.png', label: '汉堡' },
-    { file: 'pizza.png', label: '披萨' },
-    { file: 'fries.png', label: '薯条' },
-    { file: 'sandwich.png', label: '三明治' },
-    { file: 'croissant.png', label: '可颂' },
-    { file: 'egg.png', label: '水煮蛋' },
-    { file: 'coffee.png', label: '咖啡' },
-    { file: 'greentea.png', label: '绿茶' },
-    { file: 'beer.png', label: '啤酒' },
-    { file: 'cola.png', label: '可乐' },
-    { file: 'softserve.png', label: '软冰' },
-    { file: 'shavedice.png', label: '刨冰' },
-    { file: 'donut.png', label: '甜甜圈' },
-    { file: 'pudding.png', label: '布丁' },
-    { file: 'taiyaki.png', label: '鲷鱼烧' },
-    { file: 'corn.png', label: '烤玉米' },
+  const DOTOWN_EMPTY = 'bento.png'
+  const DOTOWN_GROUPS = [
+    { id: 'food', title: '食物' },
+    { id: 'weather', title: '天气' },
+    { id: 'friends', title: '小伙伴' },
   ]
+  /** 封面图标池：食物 + 天气/小动物（手选，自动匹配仍主要走食物） */
+  const DOTOWN_PACK = [
+    { file: 'bento.png', label: '便当', group: 'food' },
+    { file: 'ramen.png', label: '拉面', group: 'food' },
+    { file: 'yakisoba.png', label: '炒面', group: 'food' },
+    { file: 'spaghetti.png', label: '意面', group: 'food' },
+    { file: 'dumpling.png', label: '团子', group: 'food' },
+    { file: 'bao.png', label: '包子', group: 'food' },
+    { file: 'sushi.png', label: '寿司', group: 'food' },
+    { file: 'onigiri.png', label: '饭团', group: 'food' },
+    { file: 'rice.png', label: '白饭', group: 'food' },
+    { file: 'stew.png', label: '锅物', group: 'food' },
+    { file: 'curry.png', label: '咖喱', group: 'food' },
+    { file: 'chicken.png', label: '炸鸡', group: 'food' },
+    { file: 'steak.png', label: '肉排', group: 'food' },
+    { file: 'shrimp.png', label: '炸虾', group: 'food' },
+    { file: 'hamburger.png', label: '汉堡', group: 'food' },
+    { file: 'pizza.png', label: '披萨', group: 'food' },
+    { file: 'fries.png', label: '薯条', group: 'food' },
+    { file: 'sandwich.png', label: '三明治', group: 'food' },
+    { file: 'croissant.png', label: '可颂', group: 'food' },
+    { file: 'egg.png', label: '蛋', group: 'food' },
+    { file: 'coffee.png', label: '咖啡', group: 'food' },
+    { file: 'beer.png', label: '啤酒', group: 'food' },
+    { file: 'softserve.png', label: '软冰', group: 'food' },
+    { file: 'pudding.png', label: '布丁', group: 'food' },
+    { file: 'donut.png', label: '甜甜圈', group: 'food' },
+    { file: 'sun.png', label: '太阳', group: 'weather' },
+    { file: 'moon.png', label: '月亮', group: 'weather' },
+    { file: 'cloud.png', label: '云', group: 'weather' },
+    { file: 'rain.png', label: '雨', group: 'weather' },
+    { file: 'snow.png', label: '雪', group: 'weather' },
+    { file: 'rainbow.png', label: '彩虹', group: 'weather' },
+    { file: 'thunder.png', label: '闪电', group: 'weather' },
+    { file: 'cat.png', label: '猫', group: 'friends' },
+    { file: 'dog.png', label: '狗', group: 'friends' },
+    { file: 'chick.png', label: '小鸡', group: 'friends' },
+    { file: 'rabbit.png', label: '兔子', group: 'friends' },
+    { file: 'fish.png', label: '金鱼', group: 'friends' },
+    { file: 'penguin.png', label: '企鹅', group: 'friends' },
+    { file: 'pig.png', label: '猪', group: 'friends' },
+  ]
+  /** 默认标签 → 图；分越高越优先（多标签时取最高分） */
   const DOTOWN_CUISINE = {
-    火锅: 'stew.png',
-    烧烤: 'chicken.png',
-    川菜: 'dumpling.png',
-    粤菜: 'shrimp.png',
-    日料: 'onigiri.png',
-    韩餐: 'steak.png',
-    西餐: 'pizza.png',
-    面食: 'ramen.png',
-    小吃: 'takoyaki.png',
-    咖啡: 'coffee.png',
-    甜品: 'softserve.png',
-    轻食: 'sandwich.png',
+    火锅: { file: 'stew.png', score: 90 },
+    烧烤: { file: 'chicken.png', score: 85 },
+    川菜: { file: 'stew.png', score: 55 },
+    粤菜: { file: 'shrimp.png', score: 55 },
+    日料: { file: 'sushi.png', score: 50 },
+    韩餐: { file: 'steak.png', score: 55 },
+    西餐: { file: 'pizza.png', score: 60 },
+    面食: { file: 'ramen.png', score: 88 },
+    小吃: { file: 'bao.png', score: 70 },
+    咖啡: { file: 'coffee.png', score: 95 },
+    甜品: { file: 'softserve.png', score: 90 },
+    轻食: { file: 'sandwich.png', score: 80 },
   }
   const DOTOWN_KW = [
-    { re: /饺子|水饺|煎饺|dumpling/i, file: 'dumpling.png' },
-    { re: /小吃|面点|包子|糕|饼|点心|麻辣烫|冒菜|串串/, file: 'takoyaki.png' },
-    { re: /面食|拉面|ラーメン|ramen|面馆/i, file: 'ramen.png' },
-    { re: /火锅|涮|麻辣锅/, file: 'stew.png' },
-    { re: /烧烤|烤串|烤肉|炸鸡/, file: 'chicken.png' },
-    { re: /川菜|川味|川|辣|湘|麻辣/, file: 'dumpling.png' },
-    { re: /粤菜|粤式|早茶|广式/, file: 'shrimp.png' },
-    { re: /韩餐|韩国|韩式/, file: 'steak.png' },
-    { re: /西餐|披萨|比萨|pizza|汉堡|意面|意大利|pasta/i, file: 'pizza.png' },
-    { re: /咖啡|cafe|手冲|coffee/i, file: 'coffee.png' },
-    { re: /甜品|甜点|冰|蛋糕|布丁|奶茶/, file: 'softserve.png' },
-    { re: /茶|抹茶/, file: 'greentea.png' },
-    { re: /酒|酒吧|居酒|啤/, file: 'beer.png' },
-    { re: /轻食|沙拉|健康/, file: 'sandwich.png' },
-    { re: /早餐|brunch|早/, file: 'egg.png' },
-    { re: /寿司|刺身|和食|日料|卷/, file: 'sushi.png' },
-    { re: /章鱼烧|大阪烧/, file: 'takoyaki.png' },
-    { re: /面|麺|うどん|そば/, file: 'udon.png' },
+    { re: /拉面|ラーメン|ramen/i, file: 'ramen.png', score: 100 },
+    { re: /炒面|yakisoba/i, file: 'yakisoba.png', score: 95 },
+    { re: /意面|意大利面|pasta|spaghetti/i, file: 'spaghetti.png', score: 95 },
+    { re: /面食|面馆|面条/, file: 'ramen.png', score: 88 },
+    { re: /火锅|涮|麻辣锅/, file: 'stew.png', score: 95 },
+    { re: /烧烤|烤串|烤肉/, file: 'chicken.png', score: 90 },
+    { re: /炸鸡|鸡翅/, file: 'chicken.png', score: 92 },
+    { re: /团子|団子|dango/i, file: 'dumpling.png', score: 95 },
+    { re: /饺子|水饺|煎饺|锅贴/, file: 'bao.png', score: 95 },
+    { re: /包子|馒头|bao/i, file: 'bao.png', score: 92 },
+    { re: /寿司|刺身|sushi/i, file: 'sushi.png', score: 95 },
+    { re: /饭团|onigiri/i, file: 'onigiri.png', score: 90 },
+    { re: /咖啡|cafe|手冲|coffee/i, file: 'coffee.png', score: 100 },
+    { re: /甜品|甜点|冰淇淋|软冰|蛋糕/, file: 'softserve.png', score: 90 },
+    { re: /布丁|pudding/i, file: 'pudding.png', score: 92 },
+    { re: /甜甜圈|donut|ドーナツ/i, file: 'donut.png', score: 92 },
+    { re: /披萨|比萨|pizza/i, file: 'pizza.png', score: 95 },
+    { re: /汉堡|hamburger|burger/i, file: 'hamburger.png', score: 95 },
+    { re: /三明治|轻食|沙拉/, file: 'sandwich.png', score: 85 },
+    { re: /可颂|牛角|croissant/i, file: 'croissant.png', score: 90 },
+    { re: /咖喱|curry/i, file: 'curry.png', score: 90 },
+    { re: /酒|酒吧|居酒|啤/, file: 'beer.png', score: 85 },
+    { re: /早茶|粤菜|粤式|广式|海鲜/, file: 'shrimp.png', score: 70 },
+    { re: /川菜|川味|湘|麻辣烫|冒菜|串串/, file: 'stew.png', score: 65 },
+    { re: /韩餐|韩国|韩式/, file: 'steak.png', score: 70 },
+    { re: /牛排|肉排/, file: 'steak.png', score: 88 },
+    { re: /日料|和食/, file: 'sushi.png', score: 50 },
+    { re: /小吃|点心|面点/, file: 'bao.png', score: 70 },
+    { re: /早餐|brunch|水煮蛋/, file: 'egg.png', score: 75 },
+    { re: /薯条|fries/i, file: 'fries.png', score: 85 },
+    { re: /饭|盖浇/, file: 'rice.png', score: 60 },
   ]
 
   function resolveFromCuisines(cuisines) {
     const tags = Array.isArray(cuisines) ? cuisines : []
+    let bestFile = ''
+    let bestScore = -1
+    const consider = (file, score) => {
+      if (!file || score <= bestScore) return
+      if (!DOTOWN_PACK.some((p) => p.file === file)) return
+      bestScore = score
+      bestFile = file
+    }
     for (const t of tags) {
-      if (DOTOWN_CUISINE[t]) return DOTOWN_CUISINE[t]
+      const hit = DOTOWN_CUISINE[t]
+      if (hit) consider(hit.file, hit.score)
     }
     for (const t of tags) {
       const s = String(t)
-      for (const { re, file } of DOTOWN_KW) {
-        if (re.test(s)) return file
+      for (const { re, file, score } of DOTOWN_KW) {
+        if (re.test(s)) consider(file, score)
       }
     }
-    return DOTOWN_DEFAULT
+    return bestFile || DOTOWN_DEFAULT
   }
 
   function resolveDotownFile(cardOrCuisines) {
@@ -378,25 +406,35 @@
     lockEl?.classList.add('scroll-locked')
     mask.style.display = 'flex'
     const cur = selected && DOTOWN_PACK.some((p) => p.file === selected) ? selected : ''
-    mask.innerHTML = `
-      <div class="sheet icon-picker-sheet" onclick="event.stopPropagation()">
-        <div class="sheet-head"><span>选择像素图标</span><span class="sheet-close" id="iconPickerClose">✕</span></div>
-        <p class="icon-picker-hint">用于无照片时的封面；也可恢复按菜系自动匹配</p>
-        <button type="button" class="icon-auto-row ${!cur ? 'on' : ''}" data-icon="">
-          <img src="${DOTOWN_BASE}${autoFile}" alt="" class="icon-pick-cell-img" draggable="false">
-          <span class="icon-auto-txt"><strong>按菜系自动</strong><small>当前：${escapeHtml(
-            DOTOWN_PACK.find((p) => p.file === autoFile)?.label || '便当'
-          )}</small></span>
-        </button>
+    const groupBlocks = DOTOWN_GROUPS.map((g) => {
+      const items = DOTOWN_PACK.filter((p) => p.group === g.id)
+      if (!items.length) return ''
+      return `<div class="icon-picker-group">
+        <div class="icon-picker-group-title">${escapeHtml(g.title)}</div>
         <div class="icon-picker-grid">
-          ${DOTOWN_PACK.map(
-            (p) => `
+          ${items
+            .map(
+              (p) => `
             <button type="button" class="icon-pick-cell ${cur === p.file ? 'on' : ''}" data-icon="${p.file}">
               <img src="${DOTOWN_BASE}${p.file}" alt="" draggable="false">
               <span>${escapeHtml(p.label)}</span>
             </button>`
-          ).join('')}
+            )
+            .join('')}
         </div>
+      </div>`
+    }).join('')
+    mask.innerHTML = `
+      <div class="sheet icon-picker-sheet" onclick="event.stopPropagation()">
+        <div class="sheet-head"><span>选择像素图标</span><span class="sheet-close" id="iconPickerClose">✕</span></div>
+        <p class="icon-picker-hint">用于无照片时的封面；也可恢复按标签自动匹配</p>
+        <button type="button" class="icon-auto-row ${!cur ? 'on' : ''}" data-icon="">
+          <img src="${DOTOWN_BASE}${autoFile}" alt="" class="icon-pick-cell-img" draggable="false">
+          <span class="icon-auto-txt"><strong>按标签自动</strong><small>当前：${escapeHtml(
+            DOTOWN_PACK.find((p) => p.file === autoFile)?.label || '便当'
+          )}</small></span>
+        </button>
+        <div class="icon-picker-scroll">${groupBlocks}</div>
       </div>`
     const close = () => {
       mask.style.display = 'none'
@@ -1065,14 +1103,22 @@
     const reeatMap = { yes: ['一定会复吃', 'reeat-yes'], maybe: ['可能会', 'reeat-maybe'], no: ['不会了', 'reeat-no'] }
     const [reeatLabel, reeatCls] = reeatMap[card.reeat] || reeatMap.maybe
     const defMap = Object.fromEntries(S.getDefs().map((d) => [d.id, d]))
+    const systemDimIds = S.SYSTEM_CARD_DIM_IDS || ['dim_service', 'dim_environment']
     const orderedIds = (card.dimOrder || []).length
       ? card.dimOrder
       : S.getDefs().map((d) => d.id)
-    const defs = orderedIds
+    const otherDefs = orderedIds
       .map((id) => defMap[id])
-      .filter((d) => d && d.enabled && S.isCardAttach(d) && S.hasVal(card.dims?.[d.id]))
+      .filter(
+        (d) =>
+          d &&
+          d.enabled &&
+          S.isCardAttach(d) &&
+          S.hasVal(card.dims?.[d.id]) &&
+          !systemDimIds.includes(d.id)
+      )
     const cuisineHtml = (card.cuisines || []).length
-      ? `<div class="info-row"><span class="info-label">菜系</span><span class="info-val cuisine-chips">${(card.cuisines || [])
+      ? `<div class="info-row"><span class="info-label">标签</span><span class="info-val cuisine-chips">${(card.cuisines || [])
           .map(
             (t) =>
               `<span class="cuisine-chip">${dotownImg([t], 'cuisine-ico')}<span>${escapeHtml(t)}</span></span>`
@@ -1139,21 +1185,36 @@
       })
       .join('')
 
-    const dimsHtml = defs.length
-      ? `<div class="detail-section">
-          <div class="ds-title">评价</div>
-          <div class="detail-dims">
-            ${defs
-              .map(
-                (d) => `<div class="dim-read-row">
-                  <span class="info-label">${escapeHtml(S.dimLabel(card, d))}</span>
-                  <div class="dim-read-val">${detailDimValueHtml(d, card.dims[d.id])}</div>
-                </div>`
-              )
-              .join('')}
-          </div>
-        </div>`
-      : ''
+    const ratingRows = []
+    ratingRows.push(`<div class="dim-read-row">
+      <span class="info-label">口味</span>
+      <div class="dim-read-val">${starsHtml(card.taste, { size: 15, readonly: true, showValue: true })}</div>
+    </div>`)
+    systemDimIds.forEach((id) => {
+      const d = defMap[id]
+      if (!d || !d.enabled || !S.hasVal(card.dims?.[id])) return
+      ratingRows.push(`<div class="dim-read-row">
+        <span class="info-label">${escapeHtml(S.dimLabel(card, d))}</span>
+        <div class="dim-read-val">${detailDimValueHtml(d, card.dims[id])}</div>
+      </div>`)
+    })
+    otherDefs.forEach((d) => {
+      ratingRows.push(`<div class="dim-read-row">
+        <span class="info-label">${escapeHtml(S.dimLabel(card, d))}</span>
+        <div class="dim-read-val">${detailDimValueHtml(d, card.dims[d.id])}</div>
+      </div>`)
+    })
+    const ratingsHtml = `<div class="detail-section">
+      <div class="ds-title">评价</div>
+      <div class="detail-dims">${ratingRows.join('')}</div>
+    </div>`
+
+    const bgInfo =
+      (card.location
+        ? `<div class="info-row"><span class="info-label">位置</span><span class="info-val">${escapeHtml(card.location)}</span></div>`
+        : '') +
+      `<div class="info-row"><span class="info-label">日期</span><span class="info-val mono">${S.fmtDate(card.date)}</span></div>` +
+      cuisineHtml
 
     root().innerHTML = `
       <div class="view">
@@ -1165,18 +1226,16 @@
           <div class="detail-hero lv-tint-${escapeHtml(card.level || 'normal')}">
             <div class="detail-name">${escapeHtml(card.name)}</div>
           </div>
-          <div class="detail-info">
-            ${card.location ? `<div class="info-row"><span class="info-label">位置</span><span class="info-val">${escapeHtml(card.location)}</span></div>` : ''}
-            <div class="info-row"><span class="info-label">日期</span><span class="info-val mono">${S.fmtDate(card.date)}</span></div>
-            ${cuisineHtml}
-            <div class="info-row"><span class="info-label">口味</span><span class="info-val">${starsHtml(card.taste, { size: 15, readonly: true, showValue: true })}</span></div>
-            <div class="info-row"><span class="info-label">复吃</span><span class="info-val"><span class="reeat ${reeatCls}">${reeatLabel}</span></span></div>
-          </div>
+          <div class="detail-info">${bgInfo}</div>
+          ${ratingsHtml}
           <div class="detail-section"><div class="ds-title">照片</div>${photos}</div>
-          ${card.note ? `<div class="detail-section"><div class="ds-title">手账</div><div class="note-box">${escapeHtml(card.note)}</div></div>` : ''}
           ${dishes}
           ${listSections}
-          ${dimsHtml}
+          ${card.note ? `<div class="detail-section"><div class="ds-title">手账</div><div class="note-box">${escapeHtml(card.note)}</div></div>` : ''}
+          <div class="detail-section detail-reeat-end">
+            <div class="ds-title">复吃</div>
+            <div class="reeat-end-val"><span class="reeat ${reeatCls}">${reeatLabel}</span></div>
+          </div>
           <div class="danger-row" id="del">删除饭卡</div>
         </div>
       </div>`
@@ -1249,7 +1308,7 @@
   const OPTIONAL_CORE = [
     { id: 'location', name: '位置' },
     { id: 'date', name: '日期' },
-    { id: 'cuisine', name: '菜系' },
+    { id: 'cuisine', name: '标签' },
     { id: 'photos', name: '照片' },
     { id: 'note', name: '手账' },
     { id: 'dishes', name: '菜品' },
@@ -1408,10 +1467,10 @@
           <input class="pinput mono" id="fDate" type="date" value="${c.date}">`
       }
       if (id === 'cuisine') {
-        const iconMode = c.pixelIcon ? '自定义' : '按菜系自动'
-        return `<label class="input-label">菜系</label>
+        const iconMode = c.pixelIcon ? '自定义' : '按标签自动'
+        return `<label class="input-label">标签</label>
           <div id="tags">${tags}</div>
-          <div class="tag-add"><input class="pinput" id="tagInput" placeholder="添加菜系标签…"><button class="btn btn-sm" id="tagAdd">＋</button></div>
+          <div class="tag-add"><input class="pinput" id="tagInput" placeholder="添加标签…"><button class="btn btn-sm" id="tagAdd">＋</button></div>
             <div class="suggest-tags" id="suggestTags" style="margin-top:8px"></div>
           <label class="input-label" style="margin-top:12px">像素图标</label>
           <button type="button" class="icon-pick-btn" id="iconPickBtn">
@@ -1427,7 +1486,7 @@
           <div id="tasteStars">${starsHtml(c.taste, { showValue: true, brand: true })}</div>`
       }
       if (id === 'level') {
-        return `<label class="input-label">等级 <span class="req">*</span></label>
+        return `<label class="input-label">推荐度 <span class="req">*</span></label>
           <div class="level-row">${LEVEL_OPTS.map(
             (lv) =>
               `<div class="level-opt lv-${lv.key} ${c.level === lv.key ? 'on' : ''}" data-level="${lv.key}"><span class="lv-ico">${lv.ico}</span>${lv.label}</div>`
@@ -1476,7 +1535,7 @@
         <div class="edit-header">
           <div class="eh-left"><span class="eh-close" id="close">✕</span><span class="eh-title">${isNew ? '新建饭卡' : '编辑饭卡'}</span></div>
           <div class="eh-right">
-            <button type="button" class="btn btn-sm ${arrange ? 'btn-primary' : 'btn-ghost'}" id="arrangeBtn">${arrange ? '完成' : '编排'}</button>
+            <button type="button" class="btn btn-sm ${arrange ? 'btn-primary' : 'btn-ghost'}" id="arrangeBtn">${arrange ? '完成' : '自定义'}</button>
             ${arrange ? '' : '<button type="button" class="btn btn-sm btn-primary" id="save">保存</button>'}
           </div>
         </div>
@@ -1636,7 +1695,7 @@
           return
         }
         openAppModal({
-          title: '编排完成',
+          title: '自定义完成',
           body: '这套字段写法可以留给以后的新饭卡。',
           checkLabel: '以后新建饭卡也用这套',
           confirmText: '收好',
@@ -1647,7 +1706,7 @@
       })
     }
 
-    /* 填写交互（编排模式下也可正常填写） */
+    /* 填写交互（自定义模式下也可正常填写） */
     bindStars(root(), (val, grp) => {
       const dishIdx = grp.closest('[data-dish-stars]')?.dataset.dishStars
       if (dishIdx != null) {
@@ -1741,7 +1800,7 @@
       const preview = document.getElementById('iconPickPreview')
       const title = document.getElementById('iconPickTitle')
       if (preview) preview.src = dotownSrc(c)
-      if (title) title.textContent = c.pixelIcon ? '自定义' : '按菜系自动'
+      if (title) title.textContent = c.pixelIcon ? '自定义' : '按标签自动'
     }
     const addTag = (t) => {
       t = (t || '').trim()
@@ -1985,7 +2044,7 @@
       }
     })
 
-    /* —— 编排：长按排序 + 左滑删除 —— */
+    /* —— 自定义：长按排序 + 左滑删除 —— */
     if (arrange) {
       const removeField = (id) => {
         if (S.isLockedField(id)) return
@@ -2262,8 +2321,25 @@
             </div>`
             )
             .join('')
+          const defaultDimRows = (S.SYSTEM_CARD_DIM_IDS || [])
+            .filter((id) => !checked.has(id))
+            .map((id) => {
+              const d = defs.find((x) => x.id === id)
+              if (!d) return ''
+              return `<div class="dim-picker-row" data-pick="${d.id}">
+              <div class="dim-picker-main">
+                <div class="input-label dim-picker-name">${escapeHtml(d.name)}</div>
+                <div class="dim-picker-sub">默认组件</div>
+              </div>
+              <label class="pix-check" data-check="${d.id}">
+                <span class="pix-check-box"></span>
+              </label>
+            </div>`
+            })
+            .join('')
           const dimRows = defs
             .filter((d) => {
+              if (S.isSystemCardDim?.(d.id)) return false
               if (S.isListCol(d)) return false
               if (checked.has(d.id)) return false
               if (S.isListBlock(d)) return true
@@ -2291,7 +2367,7 @@
                 <span class="sheet-close" id="pickerClose">✕</span>
               </div>
               <div class="dim-picker-list">
-                ${coreRows}${dimRows}
+                ${coreRows}${defaultDimRows}${dimRows}
                 <div class="dim-picker-row dim-picker-custom" id="newListEntry">
                   <div class="dim-picker-main">
                     <div class="input-label dim-picker-name">新建列表</div>
@@ -2491,7 +2567,7 @@
             </div>
             <div class="edit-section">
               <label class="input-label">名称 <span class="req">*</span></label>
-              <input class="pinput" id="newDimName" placeholder="${attach === 'card' ? '如：环境、排队、等待时间' : '如：价格、备注、份量'}">
+              <input class="pinput" id="newDimName" placeholder="${attach === 'card' ? '如：排队、等待时间、氛围' : '如：价格、备注、份量'}">
             </div>
             <div class="edit-section">
               <label class="input-label">填写方式</label>
@@ -2669,7 +2745,7 @@
                    let hint = '内容匹配'
                    const lower = q.toLowerCase()
                    if (c.name.toLowerCase().includes(lower)) hint = `${S.fmtShort(c.date)} · 店名匹配`
-                   else if ((c.cuisines || []).some((t) => t.toLowerCase().includes(lower))) hint = `菜系：${c.cuisines.join('、')}`
+                   else if ((c.cuisines || []).some((t) => t.toLowerCase().includes(lower))) hint = `标签：${c.cuisines.join('、')}`
                    else if ((c.dishes || []).some((d) => d.name.toLowerCase().includes(lower))) hint = `菜品：${c.dishes.map((d) => d.name).join('、')}`
                    else if ((c.note || '').toLowerCase().includes(lower)) hint = `"…${c.note.slice(0, 28)}…"`
                    const showPhoto = c.photos?.[0] || i === 0
@@ -2716,12 +2792,12 @@
           <div style="width:30px"></div>
         </div>
         <div class="tpl-body">
-          <div class="tpl-intro">自定义评价维度：服务、排队、热量、出片……可增删改。</div>
+          <div class="tpl-intro">自定义评价组件：性价比、排队、出片……可增删改。服务与环境已在默认卡片中。</div>
           ${defs
             .map(
               (d, i) => `
             <div class="def-card frame">
-              <div class="def-name">${escapeHtml(d.name)}</div>
+              <div class="def-name">${escapeHtml(d.name)}${S.isSystemCardDim?.(d.id) ? ' <span class="type-tag">默认</span>' : ''}</div>
               <div class="def-meta">
                 <span class="type-tag">${escapeHtml(dimTypeTag(d))}${d.type === 'number' && d.unit ? ` · ${escapeHtml(d.unit)}` : ''}</span>
                 <span class="en-tag ${d.enabled ? 'on' : ''}">${d.enabled ? '启用' : '停用'}</span>
@@ -2731,7 +2807,7 @@
                 <span class="act" data-down="${i}">↓</span>
                 <span class="act" data-tog="${d.id}">${d.enabled ? '停' : '启'}</span>
                 <span class="act" data-ed="${d.id}">改</span>
-                <span class="act danger" data-del="${d.id}">删</span>
+                ${S.isSystemCardDim?.(d.id) ? '' : `<span class="act danger" data-del="${d.id}">删</span>`}
               </div>
             </div>`
             )
