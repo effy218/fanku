@@ -434,7 +434,12 @@ button:active,
 .pile-card:last-child { margin-right: 14px; }
 .pile-card:last-child.is-lifted { margin-right: 14px; }
 .pile-card .pc-photo { height: 96px; background: var(--cream-300); position: relative; }
-.pile-card .pc-photo img { width: 100%; height: 100%; object-fit: cover; }
+.pile-card .pc-photo img { width: 100%; height: 100%; object-fit: cover; background: var(--cream-300); }
+.detail-photo img,
+.photo-cell img,
+.result-card .rp img {
+  background: var(--cream-300);
+}
 .pile-card .pc-photo .pc-dotown {
   position: absolute;
   left: 50%;
