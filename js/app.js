@@ -1482,7 +1482,7 @@
           </button>`
       }
       if (id === 'taste') {
-        return `<label class="input-label">口味评分 <span class="req">*</span></label>
+        return `<label class="input-label">口味 <span class="req">*</span></label>
           <div id="tasteStars">${starsHtml(c.taste, { showValue: true, brand: true })}</div>`
       }
       if (id === 'level') {
