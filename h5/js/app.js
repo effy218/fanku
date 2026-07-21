@@ -939,8 +939,8 @@
     const runImportFile = (file) => {
       if (!file) return
       const reader = new FileReader()
-      reader.onload = () => {
-        const result = S.importBackup(String(reader.result || ''))
+      reader.onload = async () => {
+        const result = await S.importBackup(String(reader.result || ''))
         if (!result.ok) {
           openAppModal({
             title: '没能导入',
@@ -1257,7 +1257,9 @@
           confirmPrimary: false,
           onConfirm: () => {
             S.deleteCard(card.id)
-            go('home')
+            S.flush()
+              .then(() => go('home'))
+              .catch((e) => alert(S.saveErrorMessage(e)))
           },
         })
       })
@@ -1271,7 +1273,9 @@
           onSelect: (file) => {
             card.pixelIcon = file
             S.upsertCard(card)
-            go('detail', { id: card.id })
+            S.flush()
+              .then(() => go('detail', { id: card.id }))
+              .catch((e) => alert(S.saveErrorMessage(e)))
           },
         })
       }
@@ -1668,8 +1672,12 @@
           delete c._editSnapshot
           delete c._arrangeSnapshot
           S.upsertCard(c)
-          editState = null
-          go('detail', { id: c.id })
+          S.flush()
+            .then(() => {
+              editState = null
+              go('detail', { id: c.id })
+            })
+            .catch((e) => alert(S.saveErrorMessage(e)))
         })
       }
     }
@@ -2990,9 +2998,21 @@
 
   document.addEventListener('DOMContentLoaded', () => {
     installGlobalPress()
-    S.load()
     tick()
     setInterval(tick, 30000)
-    go('splash')
+    const boot = () => {
+      S.load()
+      go('splash')
+    }
+    if (S.ready) {
+      S.ready()
+        .then(boot)
+        .catch((e) => {
+          console.warn(e)
+          boot()
+        })
+    } else {
+      boot()
+    }
   })
 })()
