@@ -488,25 +488,48 @@
       .replace(/"/g, '&quot;')
   }
 
-  /* 照片：原图 data URL 过大时手机解码会闪/空白，压缩后用 blob URL 展示 */
+  /* 照片：原图过大易闪/空白；压缩为 JPEG，展示优先短 data URL / blob */
   const PHOTO_MAX_EDGE = 1280
   const PHOTO_TARGET_CHARS = 520000
   const photoBlobCache = new Map()
 
+  function normalizePhotoMime(mime) {
+    const m = String(mime || 'image/jpeg').toLowerCase()
+    if (m === 'image/jpg') return 'image/jpeg'
+    return m
+  }
+
+  function isHeicDataUrl(dataUrl) {
+    return /^data:image\/(heic|heif)/i.test(dataUrl || '')
+  }
+
+  function base64ToUint8Array(b64) {
+    const clean = String(b64 || '').replace(/\s/g, '')
+    const bin = atob(clean)
+    const len = bin.length
+    const bytes = new Uint8Array(len)
+    const chunk = 0x8000
+    for (let i = 0; i < len; i += chunk) {
+      const end = Math.min(i + chunk, len)
+      for (let j = i; j < end; j++) bytes[j] = bin.charCodeAt(j)
+    }
+    return bytes
+  }
+
   function photoDisplaySrc(dataUrl) {
     if (!dataUrl || typeof dataUrl !== 'string') return ''
     if (!dataUrl.startsWith('data:')) return dataUrl
+    if (isHeicDataUrl(dataUrl)) return ''
     const cached = photoBlobCache.get(dataUrl)
     if (cached) return cached
+    // 已压缩的小图直接用 data URL，避免 atob 失败导致空白
+    if (dataUrl.length <= PHOTO_TARGET_CHARS) return dataUrl
     try {
       const comma = dataUrl.indexOf(',')
       if (comma < 0) return dataUrl
       const header = dataUrl.slice(0, comma)
-      const b64 = dataUrl.slice(comma + 1)
-      const mime = (header.match(/data:([^;,]+)/) || [])[1] || 'image/jpeg'
-      const bin = atob(b64)
-      const bytes = new Uint8Array(bin.length)
-      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+      const mime = normalizePhotoMime((header.match(/data:([^;,]+)/) || [])[1])
+      const bytes = base64ToUint8Array(dataUrl.slice(comma + 1))
       const url = URL.createObjectURL(new Blob([bytes], { type: mime }))
       photoBlobCache.set(dataUrl, url)
       return url
@@ -517,37 +540,46 @@
   }
 
   function photoImgHtml(dataUrl, cls = '') {
+    if (isHeicDataUrl(dataUrl)) {
+      const clsAttr = cls ? ` class="${cls} photo-unsupported"` : ' class="photo-unsupported"'
+      return `<div${clsAttr} title="此格式需重新上传">重传</div>`
+    }
     const src = photoDisplaySrc(dataUrl)
+    if (!src) {
+      const clsAttr = cls ? ` class="${cls} photo-unsupported"` : ' class="photo-unsupported"'
+      return `<div${clsAttr}>无法显示</div>`
+    }
     const clsAttr = cls ? ` class="${cls}"` : ''
-    return `<img${clsAttr} src="${src}" alt="" loading="lazy" decoding="async" draggable="false">`
+    return `<img${clsAttr} src="${src}" alt="" decoding="async" draggable="false">`
   }
 
   function loadImageFromSrc(src) {
     return new Promise((resolve, reject) => {
       const img = new Image()
-      img.onload = () => resolve(img)
+      img.onload = () => {
+        if (!img.width || !img.height) reject(new Error('empty image'))
+        else resolve(img)
+      }
       img.onerror = () => reject(new Error('image decode failed'))
       img.src = src
     })
   }
 
-  async function compressDataUrl(dataUrl) {
-    if (!dataUrl || typeof dataUrl !== 'string' || !dataUrl.startsWith('data:')) return dataUrl
-    const img = await loadImageFromSrc(dataUrl)
-    const maxSide = Math.max(img.width || 1, img.height || 1)
+  function compressDrawable(drawable, srcW, srcH) {
+    const maxSide = Math.max(srcW || 1, srcH || 1)
     let scale = Math.min(1, PHOTO_MAX_EDGE / maxSide)
-    let w = Math.max(1, Math.round((img.width || 1) * scale))
-    let h = Math.max(1, Math.round((img.height || 1) * scale))
+    let w = Math.max(1, Math.round((srcW || 1) * scale))
+    let h = Math.max(1, Math.round((srcH || 1) * scale))
     const canvas = document.createElement('canvas')
     const ctx = canvas.getContext('2d')
-    if (!ctx) return dataUrl
+    if (!ctx) throw new Error('canvas unavailable')
 
     const paint = () => {
       canvas.width = w
       canvas.height = h
       ctx.fillStyle = '#ffffff'
       ctx.fillRect(0, 0, w, h)
-      ctx.drawImage(img, 0, 0, w, h)
+      ctx.drawImage(drawable, 0, 0, w, h)
     }
 
     paint()
@@ -563,6 +595,65 @@
       paint()
       out = canvas.toDataURL('image/jpeg', Math.max(quality, 0.55))
     }
+    if (drawable.close) {
+      try {
+        drawable.close()
+      } catch (e) {
+        /* ignore */
+      }
+    }
+    return out
+  }
+
+  async function bitmapFromBlob(blob) {
+    if (typeof createImageBitmap !== 'function') return null
+    try {
+      return await createImageBitmap(blob, { imageOrientation: 'from-image' })
+    } catch (e) {
+      try {
+        return await createImageBitmap(blob)
+      } catch (e2) {
+        console.warn(e2)
+        return null
+      }
+    }
+  }
+
+  async function compressDataUrl(dataUrl) {
+    if (!dataUrl || typeof dataUrl !== 'string' || !dataUrl.startsWith('data:')) return dataUrl
+    if (isHeicDataUrl(dataUrl)) throw new Error('heic unsupported in storage')
+    // 优先从 blob 解码，大图比直接喂 data URL 更稳
+    let drawable
+    let w
+    let h
+    try {
+      const comma = dataUrl.indexOf(',')
+      const header = dataUrl.slice(0, comma)
+      const mime = normalizePhotoMime((header.match(/data:([^;,]+)/) || [])[1])
+      const bytes = base64ToUint8Array(dataUrl.slice(comma + 1))
+      const blob = new Blob([bytes], { type: mime })
+      drawable = await bitmapFromBlob(blob)
+      if (drawable) {
+        w = drawable.width
+        h = drawable.height
+      } else {
+        const obj = URL.createObjectURL(blob)
+        try {
+          const img = await loadImageFromSrc(obj)
+          drawable = img
+          w = img.width
+          h = img.height
+        } finally {
+          URL.revokeObjectURL(obj)
+        }
+      }
+    } catch (e) {
+      const img = await loadImageFromSrc(dataUrl)
+      drawable = img
+      w = img.width
+      h = img.height
+    }
+    const out = compressDrawable(drawable, w, h)
     if (dataUrl.length <= PHOTO_TARGET_CHARS && out.length >= dataUrl.length) return dataUrl
     return out
   }
@@ -577,12 +668,28 @@
   }
 
   async function readAndCompressImageFile(file) {
+    // 用 File/Bitmap 解码：iPhone HEIC 在 Safari 上也能转成 JPEG 存下来
+    const bitmap = await bitmapFromBlob(file)
+    if (bitmap) {
+      return compressDrawable(bitmap, bitmap.width, bitmap.height)
+    }
+    try {
+      const obj = URL.createObjectURL(file)
+      try {
+        const img = await loadImageFromSrc(obj)
+        return compressDrawable(img, img.width, img.height)
+      } finally {
+        URL.revokeObjectURL(obj)
+      }
+    } catch (e) {
+      console.warn(e)
+    }
     const raw = await readFileAsDataUrl(file)
     try {
       return await compressDataUrl(raw)
     } catch (e) {
       console.warn(e)
-      if (raw.length <= PHOTO_TARGET_CHARS * 1.2) return raw
+      if (!isHeicDataUrl(raw) && raw.length <= PHOTO_TARGET_CHARS * 1.2) return raw
       throw e
     }
   }
@@ -594,23 +701,31 @@
       if (!Array.isArray(c.photos) || !c.photos.length) continue
       const next = []
       for (const p of c.photos) {
-        if (typeof p === 'string' && p.startsWith('data:') && p.length > PHOTO_TARGET_CHARS) {
-          try {
-            const shrunk = await compressDataUrl(p)
-            if (shrunk !== p) {
-              const oldBlob = photoBlobCache.get(p)
-              if (oldBlob) {
-                URL.revokeObjectURL(oldBlob)
-                photoBlobCache.delete(p)
-              }
-              changed = true
+        if (typeof p !== 'string' || !p.startsWith('data:')) {
+          next.push(p)
+          continue
+        }
+        const tooBig = p.length > PHOTO_TARGET_CHARS
+        const heic = isHeicDataUrl(p)
+        if (!tooBig && !heic) {
+          next.push(p)
+          continue
+        }
+        try {
+          if (heic) throw new Error('heic')
+          const shrunk = await compressDataUrl(p)
+          if (shrunk !== p) {
+            const oldBlob = photoBlobCache.get(p)
+            if (oldBlob) {
+              URL.revokeObjectURL(oldBlob)
+              photoBlobCache.delete(p)
             }
-            next.push(shrunk)
-          } catch (e) {
-            console.warn(e)
-            next.push(p)
+            changed = true
           }
-        } else {
+          next.push(shrunk)
+        } catch (e) {
+          console.warn(e)
+          // HEIC / 损坏图：保留原数据以免误删，但界面会显示「重传」
           next.push(p)
         }
       }
