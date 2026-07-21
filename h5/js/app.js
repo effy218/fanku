@@ -376,10 +376,39 @@
     return bestFile || DOTOWN_DEFAULT
   }
 
+  function isValidPixelIcon(file) {
+    return !!(file && DOTOWN_PACK.some((p) => p.file === file))
+  }
+
+  function sanitizePixelIcon(file) {
+    return isValidPixelIcon(file) ? file : ''
+  }
+
+  /** 清理已下架图标引用，避免文案仍显示「自定义」 */
+  function sanitizeAllPixelIcons() {
+    const data = S.load()
+    let changed = false
+    ;(data.cards || []).forEach((c) => {
+      if (c.pixelIcon && !isValidPixelIcon(c.pixelIcon)) {
+        c.pixelIcon = ''
+        changed = true
+      }
+    })
+    if (changed) {
+      S.save(data)
+      return S.flush().catch((e) => console.warn(e))
+    }
+    return Promise.resolve()
+  }
+
   function resolveDotownFile(cardOrCuisines) {
     if (cardOrCuisines && typeof cardOrCuisines === 'object' && !Array.isArray(cardOrCuisines)) {
-      const icon = cardOrCuisines.pixelIcon
-      if (icon && DOTOWN_PACK.some((p) => p.file === icon)) return icon
+      const icon = sanitizePixelIcon(cardOrCuisines.pixelIcon)
+      if (icon) {
+        if (cardOrCuisines.pixelIcon !== icon) cardOrCuisines.pixelIcon = icon
+        return icon
+      }
+      if (cardOrCuisines.pixelIcon) cardOrCuisines.pixelIcon = ''
       return resolveFromCuisines(cardOrCuisines.cuisines)
     }
     return resolveFromCuisines(cardOrCuisines)
@@ -1268,10 +1297,10 @@
     if (iconCover) {
       iconCover.onclick = () => {
         openDotownPicker({
-          selected: card.pixelIcon || '',
+          selected: sanitizePixelIcon(card.pixelIcon),
           cuisines: card.cuisines || [],
           onSelect: (file) => {
-            card.pixelIcon = file
+            card.pixelIcon = sanitizePixelIcon(file)
             S.upsertCard(card)
             S.flush()
               .then(() => go('detail', { id: card.id }))
@@ -1471,7 +1500,7 @@
           <input class="pinput mono" id="fDate" type="date" value="${c.date}">`
       }
       if (id === 'cuisine') {
-        const iconMode = c.pixelIcon ? '自定义' : '按标签自动'
+        const iconMode = isValidPixelIcon(c.pixelIcon) ? '自定义' : '按标签自动'
         return `<label class="input-label">标签</label>
           <div id="tags">${tags}</div>
           <div class="tag-add"><input class="pinput" id="tagInput" placeholder="添加标签…"><button class="btn btn-sm" id="tagAdd">＋</button></div>
@@ -1808,7 +1837,7 @@
       const preview = document.getElementById('iconPickPreview')
       const title = document.getElementById('iconPickTitle')
       if (preview) preview.src = dotownSrc(c)
-      if (title) title.textContent = c.pixelIcon ? '自定义' : '按标签自动'
+      if (title) title.textContent = isValidPixelIcon(c.pixelIcon) ? '自定义' : '按标签自动'
     }
     const addTag = (t) => {
       t = (t || '').trim()
@@ -1826,10 +1855,10 @@
       iconPickBtn.onclick = () => {
         pressThen(iconPickBtn, () => {
           openDotownPicker({
-            selected: c.pixelIcon || '',
+            selected: sanitizePixelIcon(c.pixelIcon),
             cuisines: c.cuisines || [],
             onSelect: (file) => {
-              c.pixelIcon = file
+              c.pixelIcon = sanitizePixelIcon(file)
               paintIconPick()
             },
           })
@@ -2489,6 +2518,7 @@
             e.stopPropagation()
             openNewDimForm(sheet, {
               onBack: () => renderPicker(),
+              onDismiss: unlockScroll,
               onCreated: (newId) => {
                 if (!c.fieldOrder.includes(newId)) c.fieldOrder = [...c.fieldOrder, newId]
                 if (!c.dimOrder.includes(newId)) c.dimOrder = [...c.dimOrder, newId]
@@ -2502,6 +2532,7 @@
             e.stopPropagation()
             openNewListForm(sheet, {
               onBack: () => renderPicker(),
+              onDismiss: unlockScroll,
               onCreated: (newId) => {
                 if (!c.fieldOrder.includes(newId)) c.fieldOrder = [...c.fieldOrder, newId]
                 S.ensureListBlock(c, newId)
@@ -2516,7 +2547,12 @@
         renderPicker()
       }
 
-      const openNewListForm = (sheet, { onBack, onCreated } = {}) => {
+      const openNewListForm = (sheet, { onBack, onCreated, onDismiss } = {}) => {
+        const dismissSheet = () => {
+          sheet.style.display = 'none'
+          if (typeof onDismiss === 'function') onDismiss()
+          else document.getElementById('editView')?.classList.remove('scroll-locked')
+        }
         sheet.innerHTML = `
           <div class="sheet dim-picker-sheet" onclick="event.stopPropagation()">
             <div class="sheet-head">
@@ -2532,8 +2568,9 @@
               <button type="button" class="btn btn-primary" id="newListSave">确认</button>
             </div>
           </div>`
-        document.getElementById('newListClose').onclick = () => {
-          sheet.style.display = 'none'
+        document.getElementById('newListClose').onclick = (e) => {
+          e.stopPropagation()
+          dismissSheet()
         }
         document.getElementById('newListBack').onclick = (e) => {
           e.stopPropagation()
@@ -2557,13 +2594,18 @@
           if (typeof onCreated === 'function') onCreated(def.id)
           else {
             c.fieldOrder = [...c.fieldOrder, def.id]
-            sheet.style.display = 'none'
+            dismissSheet()
             refresh()
           }
         }
       }
 
-      const openNewDimForm = (sheet, { onBack, onCreated, attach = 'card', listId = null } = {}) => {
+      const openNewDimForm = (sheet, { onBack, onCreated, onDismiss, attach = 'card', listId = null } = {}) => {
+        const dismissSheet = () => {
+          sheet.style.display = 'none'
+          if (typeof onDismiss === 'function') onDismiss()
+          else document.getElementById('editView')?.classList.remove('scroll-locked')
+        }
         const draftRef = { options: ['是', '否'], unit: '' }
         const title =
           attach === 'dishes' ? '添加列表列' : attach === 'list' ? '添加列表列' : '自定义组件'
@@ -2604,14 +2646,15 @@
             cfg.refresh()
           }
         })
-        document.getElementById('newDimClose').onclick = () => {
-          sheet.style.display = 'none'
+        document.getElementById('newDimClose').onclick = (e) => {
+          e.stopPropagation()
+          dismissSheet()
         }
         document.getElementById('newDimBack').onclick = (e) => {
           e.stopPropagation()
           if (typeof onBack === 'function') onBack()
           else if (attach === 'card') openDimPicker()
-          else sheet.style.display = 'none'
+          else dismissSheet()
         }
         document.getElementById('newDimSave').onclick = (e) => {
           e.stopPropagation()
@@ -2635,14 +2678,14 @@
           S.upsertDef(def)
           if (attach === 'dishes') {
             c.dishColOrder = [...(c.dishColOrder || []), def.id]
-            sheet.style.display = 'none'
+            dismissSheet()
             refresh()
             return
           }
           if (attach === 'list' && listId) {
             const block = S.ensureListBlock(c, listId)
             block.colOrder = [...(block.colOrder || []), def.id]
-            sheet.style.display = 'none'
+            dismissSheet()
             refresh()
             return
           }
@@ -2650,7 +2693,7 @@
           else {
             c.dimOrder = [...c.dimOrder, def.id]
             c.fieldOrder = [...c.fieldOrder, def.id]
-            sheet.style.display = 'none'
+            dismissSheet()
             refresh()
           }
         }
@@ -2675,6 +2718,7 @@
         openNewDimForm(sheet, {
           attach,
           listId: listKey === 'dishes' ? null : listKey,
+          onDismiss: unlockScroll,
           onBack: () => {
             sheet.style.display = 'none'
             unlockScroll()
@@ -3002,7 +3046,9 @@
     setInterval(tick, 30000)
     const boot = () => {
       S.load()
-      go('splash')
+      Promise.resolve(sanitizeAllPixelIcons())
+        .catch((e) => console.warn(e))
+        .finally(() => go('splash'))
     }
     if (S.ready) {
       S.ready()
