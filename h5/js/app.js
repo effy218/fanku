@@ -1115,12 +1115,13 @@
     const levels = ['strong', 'rec', 'normal', 'avoid']
     const piles = levels.map((key) => {
       const list = cards.filter((c) => c.level === key)
+      const bgs = S.PHOTO_BG[key]
       const cardsHtml = list.length
         ? list
             .map(
-              (c) => `
+              (c, i) => `
           <div class="pile-card" data-id="${c.id}">
-            <div class="pc-photo${c.photos?.[0] ? '' : ' is-icon'}">
+            <div class="pc-photo${c.photos?.[0] ? '' : ' is-icon'}" style="background:${bgs[i % bgs.length]}">
               ${
                 c.photos?.[0]
                   ? photoImgHtml(c.photos[0])
@@ -1406,7 +1407,7 @@
 
     const photos = (card.photos || []).length
       ? `<div class="photo-row">${card.photos.map((p) => `<div class="detail-photo">${photoImgHtml(p)}</div>`).join('')}</div>`
-      : `<div class="detail-photo is-dotown is-pickable" id="iconCover" title="点击更换图标">${dotownImg(card, 'dotown-hero')}<span class="photo-ph">暂无实拍 · 点图标可更换</span></div>`
+      : `<div class="detail-photo is-dotown is-pickable lv-cover-${escapeHtml(card.level || 'normal')}" id="iconCover" title="点击更换图标">${dotownImg(card, 'dotown-hero')}<span class="photo-ph">暂无实拍 · 点图标可更换</span></div>`
 
     const dishCols = S.getDishColDefs(card)
     const dishes = (card.dishes || []).filter((d) => (d.name || '').trim()).length
@@ -3054,7 +3055,7 @@
                      ? photoImgHtml(c.photos[0])
                      : `<img class="rp-dotown" src="${dotownSrc(c)}" alt="">`
                    return `<div class="result-card" data-id="${c.id}">
-                     ${showPhoto ? `<div class="rp${c.photos?.[0] ? ` rp-lv-${escapeHtml(c.level || 'normal')}` : ' is-icon'}">${thumb}${badge(c.level, true)}</div>` : ''}
+                     ${showPhoto ? `<div class="rp rp-lv-${escapeHtml(c.level || 'normal')}${c.photos?.[0] ? '' : ' is-icon'}">${thumb}${badge(c.level, true)}</div>` : ''}
                      <div class="rb"><div class="rn">${highlight(c.name, q)}</div>
                      <div class="rh">${highlight(hint, q)}</div>
                      ${showPhoto ? `<div class="rd">${S.fmtShort(c.date)}</div>` : ''}</div></div>`
