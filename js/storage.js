@@ -312,54 +312,205 @@ window.FankuStore = (() => {
     presetDimsVersion: 3,
   })
 
-  function load() {
+  /* —— IndexedDB 持久化（容量远大于 localStorage）—— */
+  const LS_KEY = KEY
+  const IDB_NAME = 'fanku-db'
+  const IDB_VERSION = 1
+  const IDB_STORE = 'kv'
+  const IDB_DATA_KEY = 'state'
+
+  let cache = null
+  let dbPromise = null
+  let persistChain = Promise.resolve()
+  let readyPromise = null
+
+  function openDb() {
+    if (dbPromise) return dbPromise
+    dbPromise = new Promise((resolve, reject) => {
+      const req = indexedDB.open(IDB_NAME, IDB_VERSION)
+      req.onerror = () => reject(req.error || new Error('IndexedDB open failed'))
+      req.onupgradeneeded = () => {
+        const db = req.result
+        if (!db.objectStoreNames.contains(IDB_STORE)) db.createObjectStore(IDB_STORE)
+      }
+      req.onsuccess = () => resolve(req.result)
+    })
+    return dbPromise
+  }
+
+  function idbGet() {
+    return openDb().then(
+      (db) =>
+        new Promise((resolve, reject) => {
+          const tx = db.transaction(IDB_STORE, 'readonly')
+          const req = tx.objectStore(IDB_STORE).get(IDB_DATA_KEY)
+          req.onsuccess = () => resolve(req.result ?? null)
+          req.onerror = () => reject(req.error)
+        })
+    )
+  }
+
+  function idbSet(data) {
+    return openDb().then(
+      (db) =>
+        new Promise((resolve, reject) => {
+          const tx = db.transaction(IDB_STORE, 'readwrite')
+          tx.oncomplete = () => resolve()
+          tx.onerror = () => reject(tx.error || new Error('IndexedDB write failed'))
+          tx.objectStore(IDB_STORE).put(data, IDB_DATA_KEY)
+        })
+    )
+  }
+
+  function readLegacyLocalStorage() {
     try {
-      const raw = localStorage.getItem(KEY)
-      if (raw) {
-        const data = JSON.parse(raw)
-        if (data && Array.isArray(data.cards)) {
-          let changed = false
-          if (data.cuisineTagsVersion !== 2) {
-            data.cuisineTags = migrateCuisineTags(data.cuisineTags)
-            data.cards = (data.cards || []).map((c) => {
-              changed = true
-              return migrateCardCuisines({ ...c })
-            })
-            data.cuisineTagsVersion = 2
-            changed = true
-          }
-          if (migratePresetDims(data)) changed = true
-          if (migrateDefaultCardDims(data)) changed = true
-          if (ensureSystemCardDims(data)) changed = true
-          const out = {
-            cards: data.cards || [],
-            dimensionDefs: data.dimensionDefs?.length
-              ? data.dimensionDefs
-              : [...SYSTEM_CARD_DIM_DEFS(), ...defaultDefs()],
-            recentSearches: data.recentSearches || [],
-            cuisineTags: data.cuisineTags?.length ? data.cuisineTags : [...DEFAULT_CUISINE_TAGS],
-            cuisineTagsVersion: data.cuisineTagsVersion || 2,
-            presetDimsVersion: data.presetDimsVersion || 3,
-            defaultFieldOrder: Array.isArray(data.defaultFieldOrder) ? data.defaultFieldOrder : null,
-            defaultDimOrder: Array.isArray(data.defaultDimOrder) ? data.defaultDimOrder : null,
-            defaultDishColOrder: Array.isArray(data.defaultDishColOrder) ? data.defaultDishColOrder : null,
-            defaultListColOrders:
-              data.defaultListColOrders && typeof data.defaultListColOrders === 'object'
-                ? data.defaultListColOrders
-                : null,
-          }
-          if (changed) save(out)
-          return out
+      const raw = localStorage.getItem(LS_KEY)
+      if (!raw) return null
+      const data = JSON.parse(raw)
+      if (data && Array.isArray(data.cards)) return data
+    } catch (e) {
+      console.warn(e)
+    }
+    return null
+  }
+
+  function clearLegacyLocalStorage() {
+    try {
+      localStorage.removeItem(LS_KEY)
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
+  function normalizeLoaded(data) {
+    let changed = false
+    if (!data || !Array.isArray(data.cards)) {
+      return { data: seed(), changed: true }
+    }
+    if (data.cuisineTagsVersion !== 2) {
+      data.cuisineTags = migrateCuisineTags(data.cuisineTags)
+      data.cards = (data.cards || []).map((c) => migrateCardCuisines({ ...c }))
+      data.cuisineTagsVersion = 2
+      changed = true
+    }
+    if (migratePresetDims(data)) changed = true
+    if (migrateDefaultCardDims(data)) changed = true
+    if (ensureSystemCardDims(data)) changed = true
+    const out = {
+      cards: data.cards || [],
+      dimensionDefs: data.dimensionDefs?.length
+        ? data.dimensionDefs
+        : [...SYSTEM_CARD_DIM_DEFS(), ...defaultDefs()],
+      recentSearches: data.recentSearches || [],
+      cuisineTags: data.cuisineTags?.length ? data.cuisineTags : [...DEFAULT_CUISINE_TAGS],
+      cuisineTagsVersion: data.cuisineTagsVersion || 2,
+      presetDimsVersion: data.presetDimsVersion || 3,
+      defaultFieldOrder: Array.isArray(data.defaultFieldOrder) ? data.defaultFieldOrder : null,
+      defaultDimOrder: Array.isArray(data.defaultDimOrder) ? data.defaultDimOrder : null,
+      defaultDishColOrder: Array.isArray(data.defaultDishColOrder) ? data.defaultDishColOrder : null,
+      defaultListColOrders:
+        data.defaultListColOrders && typeof data.defaultListColOrders === 'object'
+          ? data.defaultListColOrders
+          : null,
+    }
+    return { data: out, changed }
+  }
+
+  function cloneState(data) {
+    if (typeof structuredClone === 'function') {
+      try {
+        return structuredClone(data)
+      } catch (e) {
+        /* fall through */
+      }
+    }
+    return JSON.parse(JSON.stringify(data))
+  }
+
+  function isQuotaError(e) {
+    return !!(e && (e.name === 'QuotaExceededError' || e.code === 22 || e.code === 0x16))
+  }
+
+  function saveErrorMessage(e) {
+    if (isQuotaError(e)) return '本机空间不够，删几张照片或导出备份后再试'
+    return '保存失败，请再试一次'
+  }
+
+  /** 启动时调用：从 IndexedDB（或旧 localStorage）装入内存 */
+  function ready() {
+    if (readyPromise) return readyPromise
+    readyPromise = (async () => {
+      let raw = null
+      try {
+        raw = await idbGet()
+      } catch (e) {
+        console.warn('IndexedDB read failed, trying localStorage', e)
+      }
+      let fromLegacy = false
+      if (!raw || !Array.isArray(raw.cards)) {
+        const legacy = readLegacyLocalStorage()
+        if (legacy) {
+          raw = legacy
+          fromLegacy = true
         }
       }
-    } catch (e) { console.warn(e) }
-    const s = seed()
-    save(s)
-    return s
+      const { data, changed } = normalizeLoaded(raw)
+      cache = data
+      if (changed || fromLegacy || !raw) {
+        try {
+          await idbSet(cloneState(cache))
+          if (fromLegacy) clearLegacyLocalStorage()
+        } catch (e) {
+          console.warn('IndexedDB initial write failed', e)
+          // 若 IDB 不可用，退回 localStorage 以尽量不丢数据
+          try {
+            localStorage.setItem(LS_KEY, JSON.stringify(cache))
+          } catch (e2) {
+            console.warn(e2)
+          }
+        }
+      } else if (fromLegacy) {
+        clearLegacyLocalStorage()
+      }
+      return cache
+    })()
+    return readyPromise
+  }
+
+  function load() {
+    if (!cache) {
+      // ready() 前的兜底，避免空引用；正常路径会先 await ready()
+      const legacy = readLegacyLocalStorage()
+      cache = normalizeLoaded(legacy).data
+    }
+    return cache
   }
 
   function save(data) {
-    localStorage.setItem(KEY, JSON.stringify(data))
+    cache = data
+    const snapshot = cloneState(data)
+    persistChain = persistChain
+      .catch(() => {})
+      .then(async () => {
+        try {
+          await idbSet(snapshot)
+          clearLegacyLocalStorage()
+        } catch (e) {
+          // IDB 失败时尝试写入 LS（小数据还能救）
+          try {
+            localStorage.setItem(LS_KEY, JSON.stringify(snapshot))
+          } catch (e2) {
+            const err = isQuotaError(e) || isQuotaError(e2) ? e || e2 : e
+            throw err
+          }
+        }
+      })
+    return persistChain
+  }
+
+  /** 等待队列中的写入全部完成 */
+  function flush() {
+    return persistChain
   }
 
   function getCards() { return load().cards }
@@ -803,7 +954,7 @@ window.FankuStore = (() => {
   }
 
   /** 用备份整份替换本机数据。成功返回 { ok: true }，失败返回 { ok: false, error } */
-  function importBackup(raw) {
+  async function importBackup(raw) {
     try {
       const obj = typeof raw === 'string' ? JSON.parse(raw) : raw
       if (!obj || obj.app !== 'fanku') {
@@ -838,11 +989,21 @@ window.FankuStore = (() => {
       migratePresetDims(next)
       migrateDefaultCardDims(next)
       ensureSystemCardDims(next)
-      save(next)
+      cache = next
+      try {
+        await idbSet(cloneState(next))
+        clearLegacyLocalStorage()
+      } catch (e) {
+        console.warn(e)
+        if (isQuotaError(e)) {
+          return { ok: false, error: '本机空间不够，备份可能太大' }
+        }
+        return { ok: false, error: '写入本机失败，请再试一次' }
+      }
       return { ok: true, cardCount: next.cards.length }
     } catch (e) {
       console.warn(e)
-      if (e && (e.name === 'QuotaExceededError' || e.code === 22)) {
+      if (isQuotaError(e)) {
         return { ok: false, error: '本机空间不够，备份可能太大' }
       }
       return { ok: false, error: '无法读取这份备份' }
@@ -850,7 +1011,8 @@ window.FankuStore = (() => {
   }
 
   return {
-    uid, LEVEL_META, PHOTO_BG, load, save, getCards, getCard, upsertCard, deleteCard,
+    uid, LEVEL_META, PHOTO_BG, load, save, ready, flush, saveErrorMessage,
+    getCards, getCard, upsertCard, deleteCard,
     getDefs, saveDefs, upsertDef, deleteDef, addRecent, search, emptyCard,
     formatDim, hasVal, fmtDate, fmtShort, getRecent: () => load().recentSearches,
     getCuisineTags: () => load().cuisineTags, removeCuisineTag, defaultDefs,
